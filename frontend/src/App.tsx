@@ -3,17 +3,55 @@ import { useState } from 'react'
 // import viteLogo from '/vite.svg'
 import './App.css'
 
+function StopTable({ stops }: { stops: Array<any> }) {
+    if (!stops || stops.length === 0) {
+      return null;
+    }
+  
+    return (
+      <table className="table-auto w-full">
+        <thead>
+          <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+            <th className="py-3 px-6 text-left">Stop ID</th>
+            <th className="py-3 px-6 text-left">Stop Name</th>
+            <th className="py-3 px-6 text-left">Suburb</th>
+            <th className="py-3 px-6 text-left">Mode</th>
+          </tr>
+        </thead>
+        <tbody className="text-gray-600 text-sm font-light">
+          {stops.map((stop) => (
+            <tr key={stop.stop_gtfs_id} className="border-b border-gray-200 hover:bg-gray-100">
+              <td className="py-3 px-6 text-left whitespace-nowrap">{stop.stop_gtfs_id}</td>
+              <td className="py-3 px-6 text-left">{stop.name}</td>
+              <td className="py-3 px-6 text-left">{stop.suburb}</td>
+              <td className="py-3 px-6 text-left">{stop.mode}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
+  
+
+
+
 function App() {
-  // const [count, setCount] = useState(55)
-
   const [query, setQuery] = useState('');
-
+  const [stops, setStops] = useState([]);
 
   const handleInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    setQuery(event.target.value);
-    const response = await fetch(`http://${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
-    const data = await response.json();
-    console.log(data);
+    let query = event.target.value;
+    setQuery(query);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
+      const data = await response.json();
+      console.log(`Query=${query}. Retrieved ${data.length} stops`);
+      setStops(data)
+    } catch (error) {
+      console.error(error)
+    }
+
+
   };
 
   return (
@@ -32,6 +70,7 @@ function App() {
       <p className="py-4">
         The env variable is {import.meta.env.VITE_BACKEND_HOST}
       </p>
+      <StopTable stops={stops} />
     </div>
   )
 }

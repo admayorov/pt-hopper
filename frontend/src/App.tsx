@@ -11,7 +11,7 @@ function App() {
 
   const handleInputChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setQuery(event.target.value);
-    const response = await fetch(`/search?q=${query}`);
+    const response = await fetch(`http://${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
     const data = await response.json();
     console.log(data);
   };
@@ -27,7 +27,11 @@ function App() {
             onChange={handleInputChange}
             placeholder="Search..."
           />
-        </div></div>
+        </div>
+      </div>
+      <p className="py-4">
+        The env variable is {import.meta.env.VITE_BACKEND_HOST}
+      </p>
     </div>
   )
 }

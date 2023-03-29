@@ -9,12 +9,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
-    children: [
-      {
-        path: "stops/:stopGTFSID/departures",
-        element: <Departures />
-      }
-    ]
+  },
+  {
+    path: "departures/:stop_gtfs_id/",
+    element: <Departures />
   }
 ])
 

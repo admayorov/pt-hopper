@@ -1,54 +1,11 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom';
-import { useNavigate } from "react-router-dom";
+import Stops from "./Stops";
+
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 import './App.css'
 
-function StopTable({ stops }: { stops: Array<any> }) {
-  if (!stops || stops.length === 0) {
-    return null;
-  }
 
-  const navigate = useNavigate();
-
-  const handleRowClick = (stopId: string) => {
-    navigate(`/stops/${stopId}/departures`);
-  };
-  
-
-  return (
-    <div>
-      <table className="table-auto w-full">
-        <thead>
-          <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-            <th className="py-3 px-6 text-left">Stop ID</th>
-            <th className="py-3 px-6 text-left">Stop Name</th>
-            <th className="py-3 px-6 text-left">Suburb</th>
-            <th className="py-3 px-6 text-left">Mode</th>
-          </tr>
-        </thead>
-        <tbody className="text-gray-600 text-sm font-light">
-          {stops.map((stop) => (
-            <tr
-              key={stop.stop_gtfs_id}
-              className="border-b border-gray-200 hover:bg-gray-100"
-              onClick={() => handleRowClick(stop.stop_gtfs_id)}
-            >
-              <td className="py-3 px-6 text-left whitespace-nowrap">{stop.stop_gtfs_id}</td>
-              <td className="py-3 px-6 text-left">
-                {stop.name}
-                <span className="text-xs"><br />{stop.road_name ? `on ${stop.road_name}` : ""}</span>
-              </td>
-              <td className="py-3 px-6 text-left">{stop.suburb}</td>
-              <td className="py-3 px-6 text-left">{stop.mode}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 
 
@@ -99,10 +56,7 @@ function App() {
       <p className="py-4">
         The env variable is {import.meta.env.VITE_BACKEND_HOST}
       </p>
-      <StopTable stops={stops} />
-      <div className="py-4" id="stopDetail">
-        <Outlet />
-      </div>
+      <Stops stops={stops} />
     </div>
   )
 }

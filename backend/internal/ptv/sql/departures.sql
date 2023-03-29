@@ -6,9 +6,9 @@ SELECT DISTINCT
     st.departure_time,
     t.trip_headsign,
 	coalesce(nullif(r.route_short_name,''),r.route_long_name),
-    r.route_id,
-    r.route_api_id,
-    r.route_api_id||'_'||REPLACE(st.departure_time,':','') as id_dep_id
+    r.route_id
+    -- r.route_api_id,
+    -- r.route_api_id||'_'||REPLACE(st.departure_time,':','') as id_dep_id
 FROM stop_times st
 
 LEFT JOIN trips t
@@ -21,7 +21,7 @@ LEFT JOIN routes r
 on t.route_id = r.route_id
 
 WHERE st.stop_id = :stop_id
-and c.mode = :mode
+and (:mode = "any" or c.mode = :mode)
 and c.start_date <= :date
 and c.end_date >= :date
 and (CASE :int_weekday

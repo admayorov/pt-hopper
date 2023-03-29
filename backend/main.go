@@ -5,6 +5,9 @@ import (
 	"log"
 	"net/http"
 	"pt-hopper/internal/ptv"
+	"time"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 func main() {
@@ -13,8 +16,12 @@ func main() {
 	ptv.InitDB(false)
 	log.Println("DB initialised")
 
-	log.Println("Starting web server...")
-	http.HandleFunc("/stops", func(w http.ResponseWriter, r *http.Request) {
+	log.Println("Starting web server now")
+
+	router := httprouter.New()
+
+	// STOPS
+	router.GET("/stops", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Access-Control-Allow-Methods", "GET")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
@@ -41,6 +48,34 @@ func main() {
 		w.Write(jsonBytes)
 	})
 
+	// DEPARTURES
+	router.GET("/departures/:id/", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		stopId := ps.ByName("id")
+
+		mode := ptv.AnyRouteType
+		stops, err := ptv.DeparturesByGTFSID(stopId, mode, time.Now().Add(-1*time.Minute))
+		if err != nil {
+			log.Fatalf("DeparturesByGTFSID returned an error: %v", err)
+		}
+
+		// Encode the User struct as JSON
+		jsonBytes, err := json.Marshal(stops)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Set the Content-Type header to application/json
+		w.Header().Set("Content-Type", "application/json")
+
+		// Write the JSON response
+		w.Write(jsonBytes)
+	})
+
 	// Start the server
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":8080", router))
 }

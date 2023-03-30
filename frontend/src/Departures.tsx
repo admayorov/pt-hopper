@@ -26,7 +26,7 @@ function DepartureTable({ deps }: { deps: Departure[] }) {
             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">Trip ID</th>
               <th className="py-3 px-6 text-left">Destination</th>
-              <th className="py-3 px-6 text-left">Suburb</th>
+              <th className="py-3 px-6 text-left">Departing At</th>
             </tr>
           </thead>
           <tbody className="text-gray-600 text-sm font-light">

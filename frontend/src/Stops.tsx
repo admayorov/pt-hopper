@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
 
 function Stops({ stops }: { stops: Array<any> }) {
+    const navigate = useNavigate();
+
     if (!stops || stops.length === 0) {
       return null;
-    }
-  
-    const navigate = useNavigate();
+    }  
   
     const handleRowClick = (stopId: string) => {
       navigate(`/departures/${stopId}`);

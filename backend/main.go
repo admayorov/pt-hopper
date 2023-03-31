@@ -20,6 +20,15 @@ func main() {
 
 	router := httprouter.New()
 
+	// PMTILES FILE
+	router.GET("/map", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		http.ServeFile(w, r, "local/pm/melbourne.pmtiles")
+	})
+
 	// STOPS
 	router.GET("/stops", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")

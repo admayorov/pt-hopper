@@ -104,9 +104,9 @@ function Map() {
         let protocol = new pmtiles.Protocol()
         maplibregl.addProtocol("pmtiles", protocol.tile)
 
-        map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
+        // map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
 
-        map.on('click', 'melbourne-earth', (ev) => { console.log(map.getZoom()) })
+        map.on('click', (ev) => { console.log(ev.lngLat) })
 
         return () => { map.remove() }
 
@@ -114,7 +114,7 @@ function Map() {
 
     return (
         <div className="map-wrap h-screen">
-            <div ref={mapRef} className="map h-4/5 w-4/5 bg-gray-100 mx-auto" />
+            <div ref={mapRef} className="map h-full w-full bg-gray-100 mx-auto" />
         </div>
     );
 

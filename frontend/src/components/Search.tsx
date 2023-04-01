@@ -37,7 +37,7 @@ function Search() {
 
   return (
     <div className="Search max-w-screen-lg mx-auto p-8 text-center">
-      <h1 className="text-2xl font-bold mb-4">Search by Stop</h1>
+      <h1 className="text-2xl font-bold mb-4 dark:text-white">Search by Stop</h1>
       <div className="flex flex-col items-center">
         <div className="flex items-center w-full max-w-md">
           <input className="w-full max-w-md px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500 mr-4"
@@ -48,7 +48,7 @@ function Search() {
           />
         </div>
       </div>
-      <p className="py-4">
+      <p className="py-4 dark:text-white">
         The env variable is {import.meta.env.VITE_BACKEND_HOST}
       </p>
       <Stops stops={stops} />

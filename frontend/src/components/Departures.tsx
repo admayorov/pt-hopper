@@ -23,17 +23,17 @@ function DepartureTable({ deps }: { deps: Departure[] }) {
       <div>
         <table className="table-auto w-full">
           <thead>
-            <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+            <tr className="bg-gray-200 dark:bg-gray-900 text-gray-600 dark:text-gray-400 uppercase text-sm leading-normal">
               <th className="py-3 px-6 text-left">Trip ID</th>
               <th className="py-3 px-6 text-left">Destination</th>
               <th className="py-3 px-6 text-left">Departing At</th>
             </tr>
           </thead>
-          <tbody className="text-gray-600 text-sm font-light">
+          <tbody className="text-gray-600 dark:text-gray-200 text-sm font-light">
             {deps.map((dep) => (
               <tr
                 key={dep.trip_id}
-                className="border-b border-gray-200 hover:bg-gray-100"
+                className="border-b border-gray-200 dark:border-gray-400 dark:hover:bg-gray-600 hover:bg-gray-100"
               >
                 <td className="py-3 px-6 text-left whitespace-nowrap">{dep.trip_id}</td>
                 <td className="py-3 px-6 text-left">{dep.trip_headsign}</td>
@@ -67,8 +67,8 @@ function Departures() {
   }, [stop_gtfs_id]);
 
   return (
-    <div>
-      <h1>Departures for stop {stop_gtfs_id}</h1>
+    <div className="max-w-screen-lg mx-auto p-8 text-center">
+      <h1 className="text-white py-4">Departures for stop {stop_gtfs_id}</h1>
       <DepartureTable deps={departures} />
     </div>
   );

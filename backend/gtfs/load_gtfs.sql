@@ -190,8 +190,8 @@ CREATE TABLE stops (
   "stop_short_name" TEXT,
   "stop_road_name" TEXT,
   "stop_suburb" TEXT,
-  "stop_lat" TEXT,
-  "stop_lon" TEXT
+  "stop_lat" REAL,
+  "stop_lon" REAL
 );
 INSERT INTO stops (mode, stop_id, stop_name, stop_lat, stop_lon)
     select "vline", stop_id, stop_name, stop_lat, stop_lon from stg_vline_stops union all

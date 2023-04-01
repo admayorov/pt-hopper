@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -12,34 +13,84 @@ import (
 )
 
 type stopRow struct {
-	StopID        string `json:"stop_id,omitempty"`
-	StopName      string `json:"stop_name,omitempty"`
-	StopMode      string `json:"stop_mode,omitempty"`
-	StopNumber    string `json:"stop_number,omitempty"`
-	StopShortName string `json:"stop_short_name,omitempty"`
-	StopRoadName  string `json:"stop_road_name,omitempty"`
-	StopSuburb    string `json:"stop_suburb,omitempty"`
+	StopID        string  `json:"stop_id,omitempty"`
+	StopName      string  `json:"stop_name,omitempty"`
+	StopMode      string  `json:"stop_mode,omitempty"`
+	StopNumber    string  `json:"stop_number,omitempty"`
+	StopShortName string  `json:"stop_short_name,omitempty"`
+	StopRoadName  string  `json:"stop_road_name,omitempty"`
+	StopSuburb    string  `json:"stop_suburb,omitempty"`
+	StopLat       float32 `json:"stop_latitude,omitempty"`
+	StopLon       float32 `json:"stop_longitude,omitempty"`
 }
 
-type apiRoute struct {
-	RouteAPIMode   int    `json:"route_type"`
-	RouteAPIID     int    `json:"route_id"`
-	RouteName      string `json:"route_name"`
-	RouteNumber    string `json:"route_number"`
-	RouteGTFSID    string `json:"route_gtfs_id"`
-	RouteAPIGTFSID string
+type GeoJSONGeometry struct {
+	Type        string    `json:"type"`
+	Coordinates []float32 `json:"coordinates"`
 }
 
-type apiRouteList struct {
-	Routes []apiRoute `json:"routes"`
+type GeoJSONFeature struct {
+	Type       string                 `json:"type"`
+	Geometry   GeoJSONGeometry        `json:"geometry"`
+	Properties map[string]interface{} `json:"properties"`
 }
+
+type GeoJSON struct {
+	Type     string           `json:"type"`
+	Features []GeoJSONFeature `json:"features"`
+}
+
+func stopRowsToGeoJSON(stopRows []stopRow) GeoJSON {
+	features := make([]GeoJSONFeature, len(stopRows))
+
+	for i, stop := range stopRows {
+		geometry := GeoJSONGeometry{
+			Type:        "Point",
+			Coordinates: []float32{stop.StopLon, stop.StopLat},
+		}
+
+		properties := map[string]interface{}{
+			"stop_id":         stop.StopID,
+			"stop_name":       stop.StopName,
+			"stop_mode":       stop.StopMode,
+			"stop_number":     stop.StopNumber,
+			"stop_short_name": stop.StopShortName,
+			"stop_road_name":  stop.StopRoadName,
+			"stop_suburb":     stop.StopSuburb,
+		}
+
+		features[i] = GeoJSONFeature{
+			Type:       "Feature",
+			Geometry:   geometry,
+			Properties: properties,
+		}
+	}
+
+	return GeoJSON{
+		Type:     "FeatureCollection",
+		Features: features,
+	}
+}
+
+// type apiRoute struct {
+// 	RouteAPIMode   int    `json:"route_type"`
+// 	RouteAPIID     int    `json:"route_id"`
+// 	RouteName      string `json:"route_name"`
+// 	RouteNumber    string `json:"route_number"`
+// 	RouteGTFSID    string `json:"route_gtfs_id"`
+// 	RouteAPIGTFSID string
+// }
+
+// type apiRouteList struct {
+// 	Routes []apiRoute `json:"routes"`
+// }
 
 // Updates the sqlite db file, performing cleanup on the stops table
 // The stop name is parsed to extract the stop name, road name and suburb where applicable
 // Note: PTV GTFS data is poor quality, around 20 or so stops do not follow the naming convention
 // and are skipped for processing.
 func updateStopNames(db *sql.DB) {
-	query := "SELECT mode, stop_id, stop_name from stops;"
+	query := "SELECT mode, stop_id, stop_name, stop_lat, stop_lon from stops;"
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -50,7 +101,7 @@ func updateStopNames(db *sql.DB) {
 
 	for rows.Next() {
 		var stop stopRow
-		err = rows.Scan(&stop.StopMode, &stop.StopID, &stop.StopName)
+		err = rows.Scan(&stop.StopMode, &stop.StopID, &stop.StopName, &stop.StopLat, &stop.StopLon)
 		if err != nil {
 			log.Fatal("error scanning row:", err)
 		}
@@ -132,6 +183,20 @@ func updateStopNames(db *sql.DB) {
 	tx.Commit()
 
 	log.Println("Done updating stop names")
+
+	log.Println("Now starting GeoJSON creation")
+
+	geoJSON := stopRowsToGeoJSON(stops)
+	geoJSONBytes, err := json.MarshalIndent(geoJSON, "", "  ")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = os.WriteFile("local/map/ptv_stops.json", geoJSONBytes, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 }
 
 func main() {

@@ -8,6 +8,9 @@ function Map() {
     const mapRef = useRef<any>();
 
     useEffect(() => {
+        let protocol = new pmtiles.Protocol()
+        maplibregl.addProtocol("pmtiles", protocol.tile)
+
         const map = new maplibregl.Map({
             container: mapRef.current,
             style: {
@@ -15,8 +18,12 @@ function Map() {
                 "sources": {
                     "melbourne": {
                         "type": "vector",
-                        "url": `pmtiles://${import.meta.env.VITE_BACKEND_HOST}/map`
-                    }
+                        "url": `pmtiles://${import.meta.env.VITE_BACKEND_HOST}/map/melbourne.pmtiles`
+                    },
+                    "ptv_stops": {
+                        "type": "geojson",
+                        "data": `${import.meta.env.VITE_BACKEND_HOST}/map/ptv_stops.json`
+                    },
                 },
                 "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
                 "layers": [
@@ -65,12 +72,11 @@ function Map() {
                         }
                     },
                     {
-                        "id": "pois",
+                        "id": "stops",
                         "type": "circle",
-                        "source": "melbourne",
-                        "source-layer": "pois",
+                        "source": "ptv_stops",
                         "paint": {
-                            "circle-color": "#FFD900",
+                            "circle-color": "#FF8900",
                             "circle-radius": 3
                         }
                     },
@@ -100,9 +106,6 @@ function Map() {
 
             }
         })
-
-        let protocol = new pmtiles.Protocol()
-        maplibregl.addProtocol("pmtiles", protocol.tile)
 
         // map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
 

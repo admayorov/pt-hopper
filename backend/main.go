@@ -10,6 +10,12 @@ import (
 	"github.com/julienschmidt/httprouter"
 )
 
+func setCORSheaders(w *http.ResponseWriter) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "GET")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
+
 func main() {
 	log.Println("Starting Go backend...")
 
@@ -21,19 +27,22 @@ func main() {
 	router := httprouter.New()
 
 	// PMTILES FILE
-	router.GET("/map", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	router.GET("/map/melbourne.pmtiles", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		setCORSheaders(&w)
 
-		http.ServeFile(w, r, "local/pm/melbourne.pmtiles")
+		http.ServeFile(w, r, "local/map/melbourne.pmtiles")
+	})
+
+	// GEOJSON FILE
+	router.GET("/map/ptv_stops.json", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		setCORSheaders(&w)
+
+		http.ServeFile(w, r, "local/map/ptv_stops.json")
 	})
 
 	// STOPS
 	router.GET("/stops", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		setCORSheaders(&w)
 
 		query := r.URL.Query().Get("q")
 
@@ -59,9 +68,7 @@ func main() {
 
 	// DEPARTURES
 	router.GET("/departures/:id/", func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		setCORSheaders(&w)
 
 		stopId := ps.ByName("id")
 

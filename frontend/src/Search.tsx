@@ -3,45 +3,40 @@ import Stops from "./Stops";
 
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
-import './App.css'
 
-
-
-
-
-
-function App() {
+function Search() {
   const [query, setQuery] = useState('');
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout>();
   const [stops, setStops] = useState([]);
 
-  const handleStopSearch = async (query: string) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
-      const data = await response.json();
-      console.log(`Query=${query} retrieved ${data.length} stops`);
-      setStops(data)
-    } catch (error) {
-      console.error(error)
-    }
-  };
 
-  const debouncedSearch = (query: string) => {
+
+  const handleStopSearch = async (query: string) => {
+    const _handleStopSearch = async (query: string) => {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
+        if (!response.ok) {
+          throw new Error("Search API response was not ok");
+        }
+        const data = await response.json();
+        console.log(`Query=${query} retrieved ${data.length} stops`);
+        setStops(data)
+    };
+
     clearTimeout(debounceTimer);
     let newDebounceTimer = setTimeout(() => {
-      handleStopSearch(query);
-    }, 300);
+      _handleStopSearch(query);
+    }, 250);
     setDebounceTimer(newDebounceTimer)
   };
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const query = event.target.value;
     setQuery(query);
-    debouncedSearch(query);
+    handleStopSearch(query);
   };
 
   return (
-    <div className="App">
+    <div className="Search max-w-screen-lg mx-auto p-8 text-center">
       <h1 className="text-2xl font-bold mb-4">Search by Stop</h1>
       <div className="flex flex-col items-center">
         <div className="flex items-center w-full max-w-md">
@@ -61,4 +56,4 @@ function App() {
   )
 }
 
-export default App
+export default Search

@@ -2,60 +2,67 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 interface Departure {
-  mode?: string;
-  trip_id?: string;
-  arrival_time?: string;
-  departure_time?: string;
-  trip_headsign?: string;
-  route_name?: string;
-  route_id?: string;
-  route_api_id?: string;
-  id_dep_id?: string;
+  mode: string;
+  trip_id: string;
+  arrival_time: string;
+  departure_time: string;
+  trip_headsign: string;
+  route_name: string;
+  route_id: string;
+}
+
+interface RouteDepartures {
+  [key: string]: Departure[];
+}
+
+function DepartureTable(props: { deps: RouteDepartures }) {
+  const { deps } = props;
+
+  return (
+    <div>
+      {Object.keys(deps).map((route) => (
+        <div key={route}>
+          <h2 className="text-2xl mb-4 dark:text-white">{route}</h2>
+          <table className="table-auto w-full">
+            <thead>
+              <tr className="bg-gray-200 dark:bg-gray-900 text-gray-600 dark:text-gray-400 uppercase text-sm leading-normal">
+                <th className="py-3 px-6 text-left">Trip ID</th>
+                <th className="py-3 px-6 text-left">Destination</th>
+                <th className="py-3 px-6 text-left">Departing At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {deps[route].map((dep, index) => (
+                <tr
+                  key={dep.trip_id}
+                  className="border-b border-gray-200 dark:border-gray-400 dark:hover:bg-gray-600 hover:bg-gray-100"
+                >
+                  <td className="py-3 px-6 text-left whitespace-nowrap">{dep.trip_id}</td>
+                  <td className="py-3 px-6 text-left">{dep.trip_headsign}</td>
+                  <td className="py-3 px-6 text-left">{dep.departure_time?.slice(0, -3)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <br />
+          <br />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 
-function DepartureTable({ deps }: { deps: Departure[] }) {
-    if (!deps || deps.length === 0) {
-      return null;
-    }
-
-    return (
-      <div>
-        <table className="table-auto w-full">
-          <thead>
-            <tr className="bg-gray-200 dark:bg-gray-900 text-gray-600 dark:text-gray-400 uppercase text-sm leading-normal">
-              <th className="py-3 px-6 text-left">Trip ID</th>
-              <th className="py-3 px-6 text-left">Destination</th>
-              <th className="py-3 px-6 text-left">Departing At</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 dark:text-gray-200 text-sm font-light">
-            {deps.map((dep) => (
-              <tr
-                key={dep.trip_id}
-                className="border-b border-gray-200 dark:border-gray-400 dark:hover:bg-gray-600 hover:bg-gray-100"
-              >
-                <td className="py-3 px-6 text-left whitespace-nowrap">{dep.trip_id}</td>
-                <td className="py-3 px-6 text-left">{dep.trip_headsign}</td>
-                <td className="py-3 px-6 text-left">{dep.departure_time?.slice(0,-3)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-
 function Departures() {
   const { stop_gtfs_id } = useParams<{ stop_gtfs_id: string }>();
-  const [departures, setDepartures] = useState<Departure[]>([]);
+  const [departures, setDepartures] = useState<RouteDepartures>({});
 
   useEffect(() => {
     async function fetchDepartures() {
       try {
         const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/departures/${stop_gtfs_id}/`);
         if (!response.ok) {
-            throw new Error("Departures API response was not ok");
+          throw new Error("Departures API response was not ok");
         }
         const data = await response.json();
         setDepartures(data);

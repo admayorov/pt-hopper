@@ -72,8 +72,7 @@ func main() {
 
 		stopId := ps.ByName("id")
 
-		mode := ptv.AnyRouteType
-		stops, err := ptv.DeparturesByGTFSID(stopId, mode, time.Now().Add(-1*time.Minute))
+		stops, err := ptv.DeparturesByGTFSID(stopId, time.Now().Add(-1*time.Minute))
 		if err != nil {
 			log.Fatalf("DeparturesByGTFSID returned an error: %v", err)
 		}

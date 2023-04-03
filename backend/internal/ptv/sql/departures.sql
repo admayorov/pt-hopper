@@ -5,23 +5,23 @@ SELECT DISTINCT
     st.arrival_time,
     st.departure_time,
     t.trip_headsign,
-	coalesce(nullif(r.route_short_name,''),r.route_long_name),
+	coalesce(nullif(r.route_short_name,''),r.route_long_name) as route,
     r.route_id
     -- r.route_api_id,
     -- r.route_api_id||'_'||REPLACE(st.departure_time,':','') as id_dep_id
 FROM stop_times st
 
 LEFT JOIN trips t
-on st.trip_id = t.trip_id
+on st.trip_id = t.trip_id and t.mode = st.mode
 
 LEFT JOIN calendar c
-on t.service_id = c.service_id
+on t.service_id = c.service_id and c.mode = st.mode
 
 LEFT JOIN routes r
-on t.route_id = r.route_id
+on t.route_id = r.route_id and r.mode = st.mode
 
 WHERE st.stop_id = :stop_id
-and (:mode = "any" or c.mode = :mode)
+and c.mode = st.mode
 and c.start_date <= :date
 and c.end_date >= :date
 and (CASE :int_weekday
@@ -46,7 +46,6 @@ and t.service_id not in (
 )
 
 ORDER BY
-    r.route_short_name,
-    r.route_id,
-    t.direction_id,
+    t.direction_id desc,
+    route,
     st.departure_time;

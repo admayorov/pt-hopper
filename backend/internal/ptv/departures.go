@@ -23,7 +23,7 @@ func truncateTimeToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-func DeparturesByGTFSID(gtfsStopID string, mode RouteType, startTime time.Time) ([]DepartureGTFS, error) {
+func DeparturesByGTFSID(gtfsStopID string, startTime time.Time) (map[string][]DepartureGTFS, error) {
 	date := startTime.Format("20060102")
 
 	t1 := startTime
@@ -41,7 +41,6 @@ func DeparturesByGTFSID(gtfsStopID string, mode RouteType, startTime time.Time) 
 
 	rows, err := dbData.stmtGetDeparturesForStopID.Query(
 		sql.Named("stop_id", gtfsStopID),
-		sql.Named("mode", mode.asGTFSstring),
 		sql.Named("date", date),
 		sql.Named("int_weekday", startTime.Weekday()),
 		sql.Named("dep_time_min", t1s),
@@ -51,7 +50,8 @@ func DeparturesByGTFSID(gtfsStopID string, mode RouteType, startTime time.Time) 
 		return nil, fmt.Errorf("departuresByGTFSID query exec error: %v", err)
 	}
 
-	results := make([]DepartureGTFS, 0)
+	// results := make([]DepartureGTFS, 0)
+	results := make(map[string][]DepartureGTFS)
 	for rows.Next() {
 		var res DepartureGTFS
 		err := rows.Scan(
@@ -69,7 +69,7 @@ func DeparturesByGTFSID(gtfsStopID string, mode RouteType, startTime time.Time) 
 			return nil, fmt.Errorf("departuresByGTFSID query result rows scan error: %v", err)
 		}
 
-		results = append(results, res)
+		results[res.RouteName] = append(results[res.RouteName], res)
 	}
 
 	return results, nil

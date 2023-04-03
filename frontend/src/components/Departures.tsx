@@ -31,7 +31,7 @@ function DepartureTable(props: { deps: RouteDepartures }) {
                 <th className="py-3 px-6 text-left">Departing At</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="text-gray-600 dark:text-gray-200">
               {deps[route].map((dep, index) => (
                 <tr
                   key={dep.trip_id}

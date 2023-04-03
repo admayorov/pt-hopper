@@ -23,7 +23,8 @@ func truncateTimeToDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
-func DeparturesByGTFSID(gtfsStopID string, startTime time.Time) (map[string][]DepartureGTFS, error) {
+func DeparturesByGTFSID(gtfsStopID string, startTime time.Time) (map[string][]*DepartureGTFS, error) {
+	_t := time.Now()
 	date := startTime.Format("20060102")
 
 	t1 := startTime
@@ -49,9 +50,11 @@ func DeparturesByGTFSID(gtfsStopID string, startTime time.Time) (map[string][]De
 	if err != nil {
 		return nil, fmt.Errorf("departuresByGTFSID query exec error: %v", err)
 	}
+	fmt.Printf("DB call took: %s \n", time.Since(_t))
+	_t = time.Now()
 
 	// results := make([]DepartureGTFS, 0)
-	results := make(map[string][]DepartureGTFS)
+	results := make(map[string][]*DepartureGTFS)
 	for rows.Next() {
 		var res DepartureGTFS
 		err := rows.Scan(
@@ -69,8 +72,9 @@ func DeparturesByGTFSID(gtfsStopID string, startTime time.Time) (map[string][]De
 			return nil, fmt.Errorf("departuresByGTFSID query result rows scan error: %v", err)
 		}
 
-		results[res.RouteName] = append(results[res.RouteName], res)
+		results[res.RouteName] = append(results[res.RouteName], &res)
 	}
 
+	fmt.Printf("Struct wrangling took: %s \n", time.Since(_t))
 	return results, nil
 }

@@ -52,6 +52,8 @@ func main() {
 			log.Fatalf("SearchGTFSStops returned an error: %v", err)
 		}
 
+		log.Printf("Query %s: %d results \n", query, len(stops))
+
 		// Encode the User struct as JSON
 		jsonBytes, err := json.Marshal(stops)
 		if err != nil {
@@ -72,13 +74,15 @@ func main() {
 
 		stopId := ps.ByName("id")
 
-		stops, err := ptv.DeparturesByGTFSID(stopId, time.Now().Add(-1*time.Minute))
+		deps, err := ptv.DeparturesByGTFSID(stopId, time.Now().Add(-1*time.Minute))
 		if err != nil {
 			log.Fatalf("DeparturesByGTFSID returned an error: %v", err)
 		}
 
+		log.Printf("Stop %s: %d results \n", stopId, len(deps))
+
 		// Encode the User struct as JSON
-		jsonBytes, err := json.Marshal(stops)
+		jsonBytes, err := json.Marshal(deps)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

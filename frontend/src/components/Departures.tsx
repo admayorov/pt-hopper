@@ -60,7 +60,7 @@ function Departures() {
   useEffect(() => {
     async function fetchDepartures() {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/departures/${stop_gtfs_id}/`);
+        const response = await fetch(`/api/departures/${stop_gtfs_id}/`);
         if (!response.ok) {
           throw new Error("Departures API response was not ok");
         }

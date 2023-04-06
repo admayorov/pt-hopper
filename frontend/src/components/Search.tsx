@@ -13,7 +13,7 @@ function Search() {
 
   const handleStopSearch = async (query: string) => {
     const _handleStopSearch = async (query: string) => {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_HOST}/stops?q=${query}`);
+        const response = await fetch(`/api/stops?q=${query}`);
         if (!response.ok) {
           throw new Error("Search API response was not ok");
         }

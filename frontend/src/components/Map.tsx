@@ -18,11 +18,11 @@ function Map() {
                 "sources": {
                     "melbourne": {
                         "type": "vector",
-                        "url": `pmtiles://${import.meta.env.VITE_BACKEND_HOST}/map/melbourne.pmtiles`
+                        "url": `pmtiles:///api/map/melbourne.pmtiles`
                     },
                     "ptv_stops": {
                         "type": "geojson",
-                        "data": `${import.meta.env.VITE_BACKEND_HOST}/map/ptv_stops.json`
+                        "data": `/api/map/ptv_stops.json`
                     },
                 },
                 "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",

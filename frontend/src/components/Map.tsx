@@ -21,8 +21,8 @@ function Map() {
                         "url": `pmtiles:///api/map/melbourne.pmtiles`
                     },
                     "ptv_stops": {
-                        "type": "geojson",
-                        "data": `/api/map/ptv_stops.json`
+                        "type": "vector",
+                        "url": `pmtiles:///api/map/ptv_stops.pmtiles`
                     },
                 },
                 "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -75,6 +75,7 @@ function Map() {
                         "id": "stops",
                         "type": "circle",
                         "source": "ptv_stops",
+                        "source-layer": "ptv_stops",
                         "paint": {
                             "circle-color": "#FF8900",
                             "circle-radius": 3

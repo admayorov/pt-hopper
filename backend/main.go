@@ -33,6 +33,13 @@ func main() {
 		http.ServeFile(w, r, "local/map/melbourne.pmtiles")
 	})
 
+	// PMTILES FILE
+	router.GET("/map/ptv_stops.pmtiles", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		setCORSheaders(&w)
+
+		http.ServeFile(w, r, "local/map/ptv_stops.pmtiles")
+	})
+
 	// GEOJSON FILE
 	router.GET("/map/ptv_stops.json", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		setCORSheaders(&w)

@@ -100,7 +100,8 @@ function Map() {
                         "paint": {
                             "circle-color": "#FF8200",
                             "circle-radius": 4
-                        }
+                        },
+                        "minzoom": 13
                     },
                     {
                         "id": "tram_stops",
@@ -110,7 +111,9 @@ function Map() {
                         "paint": {
                             "circle-color": "#78BE20",
                             "circle-radius": 4
-                        }
+                        },
+                        "minzoom": 11
+
                     },
                     {
                         "id": "metro_stops",
@@ -120,7 +123,8 @@ function Map() {
                         "paint": {
                             "circle-color": "#0072CE",
                             "circle-radius": 4
-                        }
+                        },
+                        "minzoom": 9
                     },
                     {
                         "id": "vline_stops",
@@ -142,7 +146,10 @@ function Map() {
 
         map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
 
-        map.on('click', (ev) => { console.log(ev.lngLat) })
+        map.on('click', (ev) => {
+            console.log(ev.lngLat);
+            console.log(map.getZoom())
+        })
 
         return () => { map.remove() }
 

@@ -40,29 +40,33 @@ type GeoJSON struct {
 	Features []GeoJSONFeature `json:"features"`
 }
 
-func stopRowsToGeoJSON(stopRows []stopRow) GeoJSON {
-	features := make([]GeoJSONFeature, len(stopRows))
+func stopRowsToGeoJSON(stopRows []stopRow, mode string) GeoJSON {
+	var features []GeoJSONFeature
 
-	for i, stop := range stopRows {
-		geometry := GeoJSONGeometry{
-			Type:        "Point",
-			Coordinates: []float32{stop.StopLon, stop.StopLat},
-		}
+	for _, stop := range stopRows {
+		if stop.StopMode == mode {
+			geometry := GeoJSONGeometry{
+				Type:        "Point",
+				Coordinates: []float32{stop.StopLon, stop.StopLat},
+			}
 
-		properties := map[string]interface{}{
-			"stop_id":         stop.StopID,
-			"stop_name":       stop.StopName,
-			"stop_mode":       stop.StopMode,
-			"stop_number":     stop.StopNumber,
-			"stop_short_name": stop.StopShortName,
-			"stop_road_name":  stop.StopRoadName,
-			"stop_suburb":     stop.StopSuburb,
-		}
+			properties := map[string]interface{}{
+				"stop_id":         stop.StopID,
+				"stop_name":       stop.StopName,
+				"stop_mode":       stop.StopMode,
+				"stop_number":     stop.StopNumber,
+				"stop_short_name": stop.StopShortName,
+				"stop_road_name":  stop.StopRoadName,
+				"stop_suburb":     stop.StopSuburb,
+			}
 
-		features[i] = GeoJSONFeature{
-			Type:       "Feature",
-			Geometry:   geometry,
-			Properties: properties,
+			feature := GeoJSONFeature{
+				Type:       "Feature",
+				Geometry:   geometry,
+				Properties: properties,
+			}
+
+			features = append(features, feature)
 		}
 	}
 
@@ -71,19 +75,6 @@ func stopRowsToGeoJSON(stopRows []stopRow) GeoJSON {
 		Features: features,
 	}
 }
-
-// type apiRoute struct {
-// 	RouteAPIMode   int    `json:"route_type"`
-// 	RouteAPIID     int    `json:"route_id"`
-// 	RouteName      string `json:"route_name"`
-// 	RouteNumber    string `json:"route_number"`
-// 	RouteGTFSID    string `json:"route_gtfs_id"`
-// 	RouteAPIGTFSID string
-// }
-
-// type apiRouteList struct {
-// 	Routes []apiRoute `json:"routes"`
-// }
 
 // Updates the sqlite db file, performing cleanup on the stops table
 // The stop name is parsed to extract the stop name, road name and suburb where applicable
@@ -186,17 +177,25 @@ func updateStopNames(db *sql.DB) {
 
 	log.Println("Now starting GeoJSON creation")
 
-	geoJSON := stopRowsToGeoJSON(stops)
-	geoJSONBytes, err := json.MarshalIndent(geoJSON, "", "  ")
-	if err != nil {
-		log.Fatal(err)
-	}
+	modes := []string{"vline", "metro", "tram", "bus"}
 
-	err = os.WriteFile("local/map/ptv_stops.json", geoJSONBytes, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
+	for _, mode := range modes {
+		geoJSON := stopRowsToGeoJSON(stops, mode)
+		jsonBytes, err := json.Marshal(geoJSON)
+		if err != nil {
+			fmt.Println("Error marshalling JSON:", err)
+			continue
+		}
 
+		filename := fmt.Sprintf("local/map/%s_stops.json", mode)
+		err = os.WriteFile(filename, jsonBytes, 0644)
+		if err != nil {
+			fmt.Println("Error writing JSON file:", err)
+			continue
+		}
+
+		log.Printf("Saved %s stops to %s\n", mode, filename)
+	}
 }
 
 func main() {

@@ -2,6 +2,8 @@ import * as pmtiles from "pmtiles";
 import maplibregl from "maplibre-gl"
 import { useEffect, useRef } from "react";
 
+import "maplibre-gl/dist/maplibre-gl.css";
+
 
 function Map() {
 
@@ -72,16 +74,6 @@ function Map() {
                         }
                     },
                     {
-                        "id": "stops",
-                        "type": "circle",
-                        "source": "ptv_stops",
-                        "source-layer": "ptv_stops",
-                        "paint": {
-                            "circle-color": "#FF8900",
-                            "circle-radius": 3
-                        }
-                    },
-                    {
                         "id": "mask",
                         "type": "fill",
                         "source": "melbourne",
@@ -99,7 +91,47 @@ function Map() {
                             "line-color": "#DD0",
                             "line-width": 1
                         }
-                    }
+                    },
+                    {
+                        "id": "bus_stops",
+                        "type": "circle",
+                        "source": "ptv_stops",
+                        "source-layer": "bus",
+                        "paint": {
+                            "circle-color": "#FF8200",
+                            "circle-radius": 4
+                        }
+                    },
+                    {
+                        "id": "tram_stops",
+                        "type": "circle",
+                        "source": "ptv_stops",
+                        "source-layer": "tram",
+                        "paint": {
+                            "circle-color": "#78BE20",
+                            "circle-radius": 4
+                        }
+                    },
+                    {
+                        "id": "metro_stops",
+                        "type": "circle",
+                        "source": "ptv_stops",
+                        "source-layer": "metro",
+                        "paint": {
+                            "circle-color": "#0072CE",
+                            "circle-radius": 4
+                        }
+                    },
+                    {
+                        "id": "vline_stops",
+                        "type": "circle",
+                        "source": "ptv_stops",
+                        "source-layer": "vline",
+                        "paint": {
+                            "circle-color": "#8F1A95",
+                            "circle-radius": 4
+                        }
+                    },
                 ]
                 ,
                 center: [144.93255155345383, -37.82129634139583],
@@ -108,7 +140,7 @@ function Map() {
             }
         })
 
-        // map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
+        map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
 
         map.on('click', (ev) => { console.log(ev.lngLat) })
 

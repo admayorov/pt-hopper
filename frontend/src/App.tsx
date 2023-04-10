@@ -7,6 +7,7 @@ import Search from './components/Search'
 import Departures from './components/Departures'
 import Map from './components/Map'
 import './index.css'
+import MapsApp from './MapsApp'
 
 const router = createBrowserRouter([
   {
@@ -20,7 +21,11 @@ const router = createBrowserRouter([
   {
     path: "map/",
     element: <Map />
-  }
+  },
+  {
+    path: "mapsapp/",
+    element: <MapsApp />
+  },
 ])
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

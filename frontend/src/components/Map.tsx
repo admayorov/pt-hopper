@@ -3,7 +3,8 @@ import maplibregl from "maplibre-gl"
 import { useEffect, useRef } from "react";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-
+import "./Map.css"
+import Search from "./Search";
 
 function Map() {
 
@@ -24,7 +25,8 @@ function Map() {
                     },
                     "ptv_stops": {
                         "type": "vector",
-                        "url": `pmtiles:///api/map/ptv_stops.pmtiles`
+                        "url": `pmtiles:///api/map/ptv_stops.pmtiles`,
+                        "promoteId": "stop_id"
                     },
                 },
                 "glyphs": "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -100,13 +102,13 @@ function Map() {
                         "source": "ptv_stops",
                         "source-layer": "vline",
                         "layout": {
-                          'text-field': '{stop_short_name}',
-                          'text-size': 12,
-                          'text-offset': [1, 0],
-                          'text-anchor': 'left'
+                            'text-field': '{stop_short_name}',
+                            'text-size': 12,
+                            'text-offset': [1, 0],
+                            'text-anchor': 'left'
                         },
                         "paint": {
-                          'text-color': '#ffffff'
+                            'text-color': '#ffffff'
                         }
                     },
                     {
@@ -115,13 +117,13 @@ function Map() {
                         "source": "ptv_stops",
                         "source-layer": "metro",
                         "layout": {
-                          'text-field': '{stop_short_name}',
-                          'text-size': 10,
-                          'text-offset': [1, 0],
-                          'text-anchor': 'left'
+                            'text-field': '{stop_short_name}',
+                            'text-size': 10,
+                            'text-offset': [1, 0],
+                            'text-anchor': 'left'
                         },
                         "paint": {
-                          'text-color': '#ffffff'
+                            'text-color': '#ffffff'
                         },
                         "minzoom": 11
                     },
@@ -131,13 +133,13 @@ function Map() {
                         "source": "ptv_stops",
                         "source-layer": "tram",
                         "layout": {
-                          'text-field': '{stop_short_name}',
-                          'text-size': 10,
-                          'text-offset': [1, 0],
-                          'text-anchor': 'left'
+                            'text-field': '{stop_short_name}',
+                            'text-size': 10,
+                            'text-offset': [1, 0],
+                            'text-anchor': 'left'
                         },
                         "paint": {
-                          'text-color': '#ffffff'
+                            'text-color': '#ffffff'
                         },
                         "minzoom": 13
                     },
@@ -147,13 +149,13 @@ function Map() {
                         "source": "ptv_stops",
                         "source-layer": "bus",
                         "layout": {
-                          'text-field': '{stop_short_name}',
-                          'text-size': 10,
-                          'text-offset': [1, 0],
-                          'text-anchor': 'left'
+                            'text-field': '{stop_short_name}',
+                            'text-size': 10,
+                            'text-offset': [1, 0],
+                            'text-anchor': 'left'
                         },
                         "paint": {
-                          'text-color': '#ffffff'
+                            'text-color': '#ffffff'
                         },
                         "minzoom": 14
                     },
@@ -203,7 +205,7 @@ function Map() {
                             "circle-radius": 4
                         }
                     },
- 
+
                 ]
                 ,
                 center: [144.93255155345383, -37.82129634139583],
@@ -212,14 +214,14 @@ function Map() {
             }
         })
 
-        map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'top-right')
+        map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'bottom-right')
 
         map.on('click', (ev) => {
             console.log(ev.lngLat);
             console.log(map.getZoom())
         })
 
-        for (const layer of ['vline','metro','tram','bus']) {
+        for (const layer of ['vline', 'metro', 'tram', 'bus']) {
             map.on('click', `${layer}_stops`, (ev) => {
                 if (ev.features) {
                     var feature = ev.features[0];
@@ -235,11 +237,18 @@ function Map() {
     }, [])
 
     return (
-        <div className="map-wrap h-screen">
-            <div ref={mapRef} className="map h-full w-full bg-gray-100 mx-auto" />
-        </div>
+        <div ref={mapRef} className="map-wrap w-full h-[80vh] bg-gray-200" />
     );
 
+}
+
+function MapScreen() {
+    return (
+        <div>
+            <Search />
+            <Map />
+        </div>
+    )
 }
 
 export default Map;

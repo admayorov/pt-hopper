@@ -13,13 +13,13 @@ function Search() {
 
   const handleStopSearch = async (query: string) => {
     const _handleStopSearch = async (query: string) => {
-        const response = await fetch(`/api/stops?q=${query}`);
-        if (!response.ok) {
-          throw new Error("Search API response was not ok");
-        }
-        const data = await response.json();
-        console.log(`Query=${query} retrieved ${data.length} stops`);
-        setStops(data)
+      const response = await fetch(`/api/stops?q=${query}`);
+      if (!response.ok) {
+        throw new Error("Search API response was not ok");
+      }
+      const data = await response.json();
+      console.log(`Query=${query} retrieved ${data.length} stops`);
+      setStops(data)
     };
 
     clearTimeout(debounceTimer);
@@ -36,21 +36,13 @@ function Search() {
   };
 
   return (
-    <div className="Search max-w-screen-lg mx-auto p-8 text-center">
-      <h1 className="text-2xl font-bold mb-4 dark:text-white">Search by Stop</h1>
-      <div className="flex flex-col items-center">
-        <div className="flex items-center w-full max-w-md">
-          <input className="w-full max-w-md px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-indigo-500 mr-4"
-            type="text"
-            value={query}
-            onChange={handleInputChange}
-            placeholder="Search..."
-          />
-        </div>
-      </div>
-      <p className="py-4 dark:text-white">
-        The env variable is {import.meta.env.VITE_BACKEND_HOST}
-      </p>
+    <div>
+      <input className="flex items-center w-full p-2 bg-white rounded"
+        type="text"
+        value={query}
+        onChange={handleInputChange}
+        placeholder="Search..."
+      />
       <Stops stops={stops} />
     </div>
   )

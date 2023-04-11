@@ -4,21 +4,25 @@ import Stops from "./Stops";
 // import reactLogo from './assets/react.svg'
 // import viteLogo from '/vite.svg'
 
+interface Stop {
+  mode: string;
+  stop_gtfs_id: string;
+  name: string;
+  suburb: string;
+  latitude: number;
+  longitude: number;
+}
+
 function Search() {
   const [query, setQuery] = useState('');
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout>();
-  const [stops, setStops] = useState([]);
-
+  const [stops, setStops] = useState<Stop[]>([]);
 
 
   const handleStopSearch = async (query: string) => {
-    const _handleStopSearch = async (query: string) => {
-      const response = await fetch(`/api/stops?q=${query}`);
-      if (!response.ok) {
-        throw new Error("Search API response was not ok");
-      }
+    const _handleStopSearch = async (q: string) => {
+      const response = await fetch(`/api/stops?q=${q}`);
       const data = await response.json();
-      console.log(`Query=${query} retrieved ${data.length} stops`);
       setStops(data)
     };
 
@@ -29,21 +33,42 @@ function Search() {
     setDebounceTimer(newDebounceTimer)
   };
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value;
-    setQuery(query);
-    handleStopSearch(query);
+  const handleInputChange = (input: string) => {
+    if (input.length !== 0) {
+      setQuery(input);
+      handleStopSearch(input);
+    } else {
+      setQuery('')
+      setStops([])
+    }
   };
+
+  const handleStopSuggestionSelect = (stopName: string) => {
+    setQuery(stopName);
+    setStops([]);
+  }
 
   return (
     <div>
       <input className="flex items-center w-full p-2 bg-white rounded"
         type="text"
         value={query}
-        onChange={handleInputChange}
+        onChange={(e) => handleInputChange(e.target.value)}
         placeholder="Search..."
       />
-      <Stops stops={stops} />
+      {query.length > 0 && stops.length > 0 && (
+        <ul className="w-full py-1 mt-1 bg-white border border-gray-300 rounded shadow-md">
+          {stops.map((stop, index) => (
+            <li
+              key={index}
+              onClick={() => handleStopSuggestionSelect(stop.name)}
+              className="px-4 py-2 cursor-pointer hover:bg-gray-200"
+            >
+              {stop.name}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

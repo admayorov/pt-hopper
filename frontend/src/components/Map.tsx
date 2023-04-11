@@ -1,13 +1,16 @@
 import * as pmtiles from "pmtiles";
-import maplibregl from "maplibre-gl"
+import maplibregl, { MapMouseEvent } from "maplibre-gl"
 import { useEffect, useRef } from "react";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import "./Map.css"
 import Search from "./Search";
 
-function Map() {
+interface MapProps {
+    onMapEvent: (info: string) => void;
+}
 
+
+function Map(props: MapProps) {
     const mapRef = useRef<any>();
 
     useEffect(() => {
@@ -221,16 +224,21 @@ function Map() {
             console.log(map.getZoom())
         })
 
-        for (const layer of ['vline', 'metro', 'tram', 'bus']) {
-            map.on('click', `${layer}_stops`, (ev) => {
-                if (ev.features) {
-                    var feature = ev.features[0];
-                    console.log(feature.properties);
+        const mapEvent = (ev: any) => {
+            if (ev.features) {
+                var feature = ev.features[0];
+                console.log(feature.properties);
+                if (feature.properties) {
+                    props.onMapEvent(feature.properties.stop_id)
                 }
-            })
+                
+            }
         }
 
-
+        for (const layer of ['vline', 'metro', 'tram', 'bus']) {
+            map.on('click', `${layer}_stops`, mapEvent);
+            map.on('click', `labels_${layer}`, mapEvent);
+        }
 
         return () => { map.remove() }
 
@@ -240,15 +248,6 @@ function Map() {
         <div ref={mapRef} className="map-wrap w-full h-[80vh] bg-gray-200" />
     );
 
-}
-
-function MapScreen() {
-    return (
-        <div>
-            <Search />
-            <Map />
-        </div>
-    )
 }
 
 export default Map;

@@ -11,9 +11,9 @@ const MapsApp: React.FC = () => {
     return (
       <div className="relative flex flex-col max-w-4xl mx-auto h-screen">
         <div className="absolute top-0 left-0 z-10 w-full p-4 bg-transparent">
-          <Search />
+          <Search setStopID={setStopID} />
         </div>
-        <Map onMapEvent={setStopID}/>
+        <Map stopID={stopID} setStopID={setStopID}/>
         <Panel stopID={stopID}/>
       </div>
     );

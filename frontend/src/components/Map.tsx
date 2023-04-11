@@ -1,24 +1,25 @@
 import * as pmtiles from "pmtiles";
-import maplibregl, { MapMouseEvent } from "maplibre-gl"
+import maplibregl, { Map } from "maplibre-gl"
 import { useEffect, useRef } from "react";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import Search from "./Search";
 
 interface MapProps {
-    onMapEvent: (info: string) => void;
+    stopID: string,
+    setStopID: (info: string) => void;
 }
 
 
-function Map(props: MapProps) {
-    const mapRef = useRef<any>();
+function MapView(props: MapProps) {
+    const mapContainerRef = useRef<any>();
+    const mapObjectRef = useRef<Map>();
 
     useEffect(() => {
         let protocol = new pmtiles.Protocol()
         maplibregl.addProtocol("pmtiles", protocol.tile)
 
         const map = new maplibregl.Map({
-            container: mapRef.current,
+            container: mapContainerRef.current,
             style: {
                 "version": 8,
                 "sources": {
@@ -217,6 +218,8 @@ function Map(props: MapProps) {
             }
         })
 
+        mapObjectRef.current = map;
+
         map.addControl(new maplibregl.NavigationControl({ showCompass: true, showZoom: true }), 'bottom-right')
 
         map.on('click', (ev) => {
@@ -229,7 +232,7 @@ function Map(props: MapProps) {
                 var feature = ev.features[0];
                 console.log(feature.properties);
                 if (feature.properties) {
-                    props.onMapEvent(feature.properties.stop_id)
+                    props.setStopID(feature.properties.stop_id)
                 }
                 
             }
@@ -244,10 +247,17 @@ function Map(props: MapProps) {
 
     }, [])
 
+    useEffect(() => {
+        const map = mapObjectRef.current;
+        console.log("map will fly now to stop id " + props.stopID)
+    }, [props.stopID])
+
+    // todo: instead of storing just stopID, store the entire stop data in the React state
+
     return (
-        <div ref={mapRef} className="map-wrap w-full h-[80vh] bg-gray-200" />
+        <div ref={mapContainerRef} className="map-wrap w-full h-[80vh] bg-gray-200" />
     );
 
 }
 
-export default Map;
+export default MapView;

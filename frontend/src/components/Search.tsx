@@ -13,7 +13,11 @@ interface Stop {
   longitude: number;
 }
 
-function Search() {
+interface SearchProps {
+  setStopID: (info: string) => void;
+}
+
+function Search(props: SearchProps) {
   const [query, setQuery] = useState('');
   const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout>();
   const [stops, setStops] = useState<Stop[]>([]);
@@ -43,9 +47,10 @@ function Search() {
     }
   };
 
-  const handleStopSuggestionSelect = (stopName: string) => {
+  const handleStopSuggestionSelect = (stopName: string, stopId: string) => {
     setQuery(stopName);
     setStops([]);
+    props.setStopID(stopId)
   }
 
   return (
@@ -61,7 +66,7 @@ function Search() {
           {stops.map((stop, index) => (
             <li
               key={index}
-              onClick={() => handleStopSuggestionSelect(stop.name)}
+              onClick={() => handleStopSuggestionSelect(stop.name, stop.stop_gtfs_id)}
               className="px-4 py-2 cursor-pointer hover:bg-gray-200"
             >
               {stop.name}

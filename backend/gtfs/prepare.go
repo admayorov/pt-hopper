@@ -188,6 +188,14 @@ func updateStopNames(db *sql.DB) {
 		}
 
 		filename := fmt.Sprintf("local/map/%s_stops.json", mode)
+
+		f, err := os.OpenFile(filename, os.O_CREATE|os.O_APPEND, 0644)
+		defer f.Close()
+		if err != nil {
+			fmt.Println("Error opening JSON file:", err)
+			return
+		}
+
 		err = os.WriteFile(filename, jsonBytes, 0644)
 		if err != nil {
 			fmt.Println("Error writing JSON file:", err)

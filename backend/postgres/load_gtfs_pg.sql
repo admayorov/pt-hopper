@@ -223,13 +223,72 @@ ALTER TABLE stg_stops ALTER COLUMN mode SET DEFAULT 'bus';
 ALTER TABLE stg_stops ALTER COLUMN mode DROP DEFAULT;
 
 CREATE TABLE stops as (
-  SELECT
-    mode::TEXT         as mode,
-    stop_id::TEXT      as stop_id,
-    stop_name::TEXT    as stop_name,
-    stop_lat::DECIMAL  as stop_lat,
-    stop_lon::DECIMAL  as stop_lon 
-  from stg_stops
+  with vline_metro as (
+    select
+      *,
+      REGEXP_MATCHES(stop_name, '^([^\s]+)\s*Railway Station\s*\((.+)\)$') as stop_regex_array
+    from stg_stops
+    where mode = 'vline' or mode ='metro'
+  )
+
+  , tram as (
+    select
+      *,
+      REGEXP_MATCHES(stop_name, '^([^-]+)-([^/]*)(?:/([^/]+(?:/[^/]+)*)\s)?\s*\(\s*([^\]]+)\s*\)$') as stop_regex_array
+    from stg_stops
+    where mode = 'tram'
+  )
+
+  , bus as (
+    select
+      *,
+      REGEXP_MATCHES(stop_name, '(.+?)(?:/(.+)\s)?\s*\((.*(?:\(.*\)).*|[^()]+)\)$') as stop_regex_array
+    from stg_stops
+    where mode = 'bus'
+  )
+
+  , stops_all as (
+    select
+      *,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_number,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_short_name,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[3] else NULL end     as stop_road_name,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[4] else NULL end     as stop_suburb
+    from tram   
+
+    union all
+
+    select
+      *,
+      NULL                                                                                   as stop_number,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_short_name,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_road_name,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[3] else NULL end     as stop_suburb
+    from bus
+
+    union all
+
+    select
+      *,
+      NULL                                                                                   as stop_number,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_short_name,
+      NULL                                                                                   as stop_road_name,
+      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_suburb
+    from vline_metro
+  )
+
+  select
+    mode::TEXT             as mode,
+    stop_id::TEXT          as stop_id,
+    stop_name::TEXT        as stop_full_name,
+    stop_number::TEXT      as stop_number,
+    stop_short_name::TEXT  as stop_short_name,  
+    stop_road_name::TEXT   as stop_road_name,
+    stop_suburb::TEXT      as stop_suburb,
+    stop_lat::DECIMAL      as stop_lat,
+    stop_lon::DECIMAL      as stop_lon
+  from stops_all
+
 );
 
 

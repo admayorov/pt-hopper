@@ -226,7 +226,7 @@ CREATE TABLE stops as (
   with vline_metro as (
     select
       *,
-      REGEXP_MATCHES(stop_name, '^([^\s]+)\s*Railway Station\s*\((.+)\)$') as stop_regex_array
+      REGEXP_MATCHES(stop_name, '^(.+)\s+Railway Station\s*\((.+)\)') as stop_regex_array
     from stg_stops
     where mode = 'vline' or mode ='metro'
   )
@@ -341,3 +341,20 @@ CREATE INDEX idx_stops_stop_id ON stops(stop_id);
 CREATE INDEX idx_trips_trip_id ON trips(trip_id);
 CREATE INDEX idx_trips_route_id ON trips(route_id);
 CREATE INDEX idx_trips_service_id ON trips(service_id);
+
+-- Grants
+GRANT ALL PRIVILEGES ON DATABASE ptvdb TO python;
+GRANT ALL ON TABLE calendar TO python;
+GRANT ALL ON TABLE calendar_dates TO python;
+GRANT ALL ON TABLE geography_columns TO python;
+GRANT ALL ON TABLE geometry_columns TO python;
+GRANT ALL ON TABLE routes TO python;
+GRANT ALL ON TABLE spatial_ref_sys TO python;
+GRANT ALL ON TABLE stg_calendar TO python;
+GRANT ALL ON TABLE stg_routes TO python;
+GRANT ALL ON TABLE stg_stop_times TO python;
+GRANT ALL ON TABLE stg_stops TO python;
+GRANT ALL ON TABLE stg_trips TO python;
+GRANT ALL ON TABLE stop_times TO python;
+GRANT ALL ON TABLE stops TO python;
+GRANT ALL ON TABLE trips TO python;

@@ -231,7 +231,10 @@ class Node:
         return f"Node('{self.type}', '{self.id}', '{self.t}')"
     
     def __str__(self):
-        return f"<{self.type} node '{self.id}' at {self.t}>"
+        time, _ = seconds_to_time(self.t)
+        pretty_time = time.strftime('%H:%M')
+
+        return f"<{self.type} node '{self.id}' at {pretty_time}>"
     
     def tid(self):
         return (self.type, self.id)
@@ -295,6 +298,15 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         for node, dist in nodes.items():
             print(node, dist)
         print("\n")
+
+    # Target stop found, backtrack to get parents
+    path = []
+    while node:
+        path.append(node)
+        node = node.parent
+    
+    for node in path[::-1]:
+        print(node)
         
 
 

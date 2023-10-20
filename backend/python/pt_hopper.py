@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 from typing import Tuple
 
@@ -214,45 +217,75 @@ def stop_distance(stop_id_1: str, stop_id_2: str):
 # for row in times:
 #     print(row)
 
+@dataclass
+class Node:
+    type: str
+    id: str
+    t: str
+    parent: Node = None
+
+    def __hash__(self):
+        return hash((self.type, self.id, self.t))
+    
+    def __repr__(self):
+        return f"Node('{self.type}', '{self.id}', '{self.t}')"
+    
+    def __str__(self):
+        return f"<{self.type} node '{self.id}' at {self.t}>"
+    
+    def tid(self):
+        return (self.type, self.id)
+
 def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
     q = heapdict()
 
-    curr_node_type = 'stop'
-    curr_id = start_stop_id
-    curr_t = time_to_seconds(departure_time)
+    node_type = 'stop'
+    id = start_stop_id
+    t = time_to_seconds(departure_time)
+
+    node = Node(node_type, id, t)
     
-    q[curr_node_type, curr_id, curr_t] = stop_distance(start_stop_id, end_stop_id)
+    q[node] = stop_distance(start_stop_id, end_stop_id)
 
     visited = set()
 
     # while q:
-    for i in range(30):
-        (curr_node_type, curr_id, curr_t), current_dist = q.popitem()
+    for i in range(999):
+        node, current_dist = q.popitem()
 
-        if curr_node_type == 'stop':
-            trips = get_trips(curr_id, curr_t, time_limit=60*30)
+        if node.type == 'stop':
+            trips = get_trips(node.id, node.t, time_limit=60*30)
             for trip in trips:
-                node_type = 'trip'
+                type = 'trip'
                 id = trip[1]
                 t = trip[3]
                 dist = current_dist
 
-                if (node_type, id) not in visited:
-                    visited.add((node_type, id))
-                    q[node_type, id, t] = dist
+                new_node = Node(type, id, t, parent=node)
 
-        elif curr_node_type == 'trip':
-            stops = get_stopping_times(curr_id)
+                if new_node.tid() not in visited:
+                    visited.add(new_node.tid())
+                    q[new_node] = dist
+
+        elif node.type == 'trip':
+            stops = get_stopping_times(node.id)
             for stop in stops:
-                if stop[3] > curr_t:
-                    node_type = 'stop'
+                if stop[3] > node.t:
+                    type = 'stop'
                     id = stop[1]
                     t = stop[3]
                     dist = stop_distance(stop[1], end_stop_id)
 
-                    if (node_type, id) not in visited:
-                        visited.add((node_type, id))
-                        q[node_type, id, t] = dist
+                    new_node = Node(type, id, t, parent=node)
+
+                    if new_node.tid() not in visited:
+                        visited.add(new_node.tid())
+                        q[new_node] = dist
+        
+        if node.id == end_stop_id:
+            print("Found!")
+            break
+
     
         print(f"#{i}")
 
@@ -268,11 +301,15 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
 if __name__ == '__main__':
     stop1 = '19915' # Clayton
     stop2 = '19866' # Cheltenham
-    algo(stop1, stop2, datetime.now() - timedelta(hours=11))
+    t0 = time_to_seconds(datetime.now())
+
+    n = Node('stop', stop1, t0)
+
+    algo(stop1, stop2, datetime.now())
 
 
 # next:
-# - pretty print
+# - pretty print ✅
 # - incorporate time
 #   - use as tiebraker?
 #   - think about time-based heuristic function

@@ -177,7 +177,7 @@ def get_stopping_times(trip_id: str):
         )
 
         query = query.join(StopTime, Trip.trip_id == StopTime.trip_id, isouter=True)
-        query = query.join(Stop, StopTime.stop_id == Stop.stop_id, isouter=True)
+        query = query.join(Stop, StopTime.stop_id == Stop.stop_id)
 
         query = query.filter(Trip.trip_id == trip_id)
 
@@ -215,13 +215,15 @@ def get_stop(stop_id: str):
             Stop.stop_suburb,
             Stop.cluster_neighbours
         )
-        
-        result = query.all()
 
-        if len(result) == 0:
+        query = query.filter(Stop.stop_id == stop_id)
+        
+        result = query.first()
+
+        if result is None:
             raise Exception(f"No results from get_stop for stop_id {stop_id}")
         
-        return result[0]
+        return result
         
 
 # trips = get_trips('19943', datetime.now(), row_limit=20, time_limit=60*60)
@@ -259,7 +261,7 @@ class Node:
         return (self.type, self.id)
 
 def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
-    allowed_transfer_time = 60 # Time (seconds) between arriving at a stop and boarding another trip
+    minimum_transfer_time = 60 # Time (seconds) between arriving at a stop and boarding another trip
     q = heapdict()
 
     node_type = 'stop'
@@ -278,32 +280,42 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         node, current_dist = q.popitem()
 
         if node.type == 'stop':
+            trips = get_trips(node.id, node.t, time_limit=60*30)
+
+            # Add trips from this stop
+            for trip in trips:
+                id = trip[1]
+                t = trip[3] + minimum_transfer_time
+                dist = current_dist + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
+
+                new_node = Node('trip', id, t, parent=node)
+
+                if new_node.tid() not in visited:
+                    visited.add(new_node.tid())
+                    q[new_node] = dist
+            
+            # Add neighbour stops from cluster
             stop_data = get_stop(node.id)
-            cluster_stop_ids = [node.id] + stop_data.cluster_neighbours
+            if stop_data.cluster_neighbours:
+                for neighbour_id in stop_data.cluster_neighbours:
+                    id = neighbour_id
+                    t = node.t
+                    dist = current_dist + stop_distance(node.id, neighbour_id)
 
-            for stop_id in cluster_stop_ids:
-                new_stop_node = Node('stop', stop_id, t, parent=node)
-
-                if new_stop_node.tid() not in visited:
-                    visited.add(new_stop_node.tid())
-                    q[new_stop_node] = current_dist + stop_distance(node.id, stop_id)
-
-                trips = get_trips(new_stop_node.id, new_stop_node.t + allowed_transfer_time, time_limit=30*60)
-                for trip in trips:
-                    trip_id = trip[1]
-                    t = trip[3]
-                    dist = current_dist + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
-
-                    new_node = Node('trip', trip_id, t, parent=new_stop_node)
+                    new_node = Node('stop', id, t, parent=node)
 
                     if new_node.tid() not in visited:
                         visited.add(new_node.tid())
-                        q[new_node] = dist
+                        q[new_node] = dist 
+
 
         elif node.type == 'trip':
             stops = get_stopping_times(node.id)
+
+            # Add each stop that arrives on or after the node time
+            # TODO: refactor to explictly take origin stop into account
             for stop in stops:
-                if stop[3] > node.t:
+                if stop[3] >= node.t:
                     stop_id = stop[1]
                     t = stop[3]
                     dist = stop_distance(stop[1], end_stop_id)

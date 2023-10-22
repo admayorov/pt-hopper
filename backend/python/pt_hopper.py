@@ -6,7 +6,7 @@ from typing import Tuple
 
 from heapdict import heapdict
 
-from sqlalchemy import create_engine, and_, case, func, Column, Integer, Numeric, SmallInteger, Text, Date
+from sqlalchemy import ARRAY, create_engine, and_, case, func, Column, Integer, Numeric, SmallInteger, Text, Date
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import text
 
@@ -25,6 +25,7 @@ class Stop(Base):
     stop_short_name = Column(Text)
     stop_road_name = Column(Text)
     stop_suburb = Column(Text)
+    cluster_neighbours = Column(ARRAY(Text))
     # stop_lat = Column(Numeric)
     # stop_lon = Column(Numeric)
 
@@ -117,7 +118,7 @@ def seconds_to_time(total_seconds: int) -> Tuple[time, bool]:
     return time(hour=hours, minute=minutes, second=seconds), is_next_day
     
 
-def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 10, time_limit: int = 9999999):
+def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100, time_limit: int = 9999999):
     with Session() as session:
         # Some params
         try:
@@ -202,6 +203,27 @@ def stop_distance(stop_id_1: str, stop_id_2: str):
         
         return result[0][0]
 
+def get_stop(stop_id: str):
+    with Session() as session:
+        query = session.query(
+            Stop.mode,
+            Stop.stop_id,
+            Stop.stop_full_name,
+            Stop.stop_number,
+            Stop.stop_short_name,
+            Stop.stop_road_name,
+            Stop.stop_suburb,
+            Stop.cluster_neighbours
+        )
+        
+        result = query.all()
+
+        if len(result) == 0:
+            raise Exception(f"No results from get_stop for stop_id {stop_id}")
+        
+        return result[0]
+        
+
 # trips = get_trips('19943', datetime.now(), row_limit=20, time_limit=60*60)
 # for row in trips:
 #     desto = row[4]
@@ -237,6 +259,7 @@ class Node:
         return (self.type, self.id)
 
 def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
+    allowed_transfer_time = 60 # Time (seconds) between arriving at a stop and boarding another trip
     q = heapdict()
 
     node_type = 'stop'
@@ -250,55 +273,68 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
     visited = set()
     visited.add(node.tid())
 
-    # while q:
+    found_node = None
     for i in range(999):
         node, current_dist = q.popitem()
 
         if node.type == 'stop':
-            trips = get_trips(node.id, node.t, time_limit=60*30)
-            for trip in trips:
-                type = 'trip'
-                id = trip[1]
-                t = trip[3]
-                dist = current_dist + (t - node.t) # add time delta to penalise later trips
+            stop_data = get_stop(node.id)
+            cluster_stop_ids = [node.id] + stop_data.cluster_neighbours
 
-                new_node = Node(type, id, t, parent=node)
+            for stop_id in cluster_stop_ids:
+                new_stop_node = Node('stop', stop_id, t, parent=node)
 
-                if new_node.tid() not in visited:
-                    visited.add(new_node.tid())
-                    q[new_node] = dist
+                if new_stop_node.tid() not in visited:
+                    visited.add(new_stop_node.tid())
+                    q[new_stop_node] = current_dist + stop_distance(node.id, stop_id)
+
+                trips = get_trips(new_stop_node.id, new_stop_node.t + allowed_transfer_time, time_limit=30*60)
+                for trip in trips:
+                    trip_id = trip[1]
+                    t = trip[3]
+                    dist = current_dist + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
+
+                    new_node = Node('trip', trip_id, t, parent=new_stop_node)
+
+                    if new_node.tid() not in visited:
+                        visited.add(new_node.tid())
+                        q[new_node] = dist
 
         elif node.type == 'trip':
             stops = get_stopping_times(node.id)
             for stop in stops:
                 if stop[3] > node.t:
-                    type = 'stop'
-                    id = stop[1]
+                    stop_id = stop[1]
                     t = stop[3]
                     dist = stop_distance(stop[1], end_stop_id)
 
-                    new_node = Node(type, id, t, parent=node)
+                    new_node = Node('stop', stop_id, t, parent=node)
 
                     if new_node.tid() not in visited:
                         visited.add(new_node.tid())
                         q[new_node] = dist
-        
-        if node.id == end_stop_id:
-            print("Found!")
-            break
 
-    
+                    if stop_id == end_stop_id:
+                        found_node = new_node
+                        break
+           
         print(f"#{i}")
 
         nodes = dict(q)
         nodes = {k: v for k, v in sorted(nodes.items(), key=lambda item: item[1])}
 
         for node, dist in nodes.items():
-            print(node, dist)
+            print(f"{node} {round(dist/1000,3)} km")
         print("\n")
+
+        if found_node:
+            print("Found!")
+            break
 
     # Target stop found, backtrack to get parents
     path = []
+    node = found_node
+
     while node:
         path.append(node)
         node = node.parent

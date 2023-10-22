@@ -25,8 +25,8 @@ class Stop(Base):
     stop_short_name = Column(Text)
     stop_road_name = Column(Text)
     stop_suburb = Column(Text)
-    stop_lat = Column(Numeric)
-    stop_lon = Column(Numeric)
+    # stop_lat = Column(Numeric)
+    # stop_lon = Column(Numeric)
 
 class StopTime(Base):
     __tablename__ = 'stop_times'
@@ -190,10 +190,7 @@ def stop_distance(stop_id_1: str, stop_id_2: str):
         sql = text(
             """
             select
-                ST_DistanceSphere(
-                    ST_MakePoint(s1.stop_lat, s1.stop_lon),
-                    ST_MakePoint(s2.stop_lat, s2.stop_lon)
-                )
+                ST_Distance(s1.stop_geo_point, s2.stop_geo_point)
             from stops s1 cross join stops s2
             where s1.stop_id = :s1 and s2.stop_id = :s2;
             """)
@@ -251,6 +248,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
     q[node] = stop_distance(start_stop_id, end_stop_id)
 
     visited = set()
+    visited.add(node.tid())
 
     # while q:
     for i in range(999):
@@ -262,7 +260,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                 type = 'trip'
                 id = trip[1]
                 t = trip[3]
-                dist = current_dist
+                dist = current_dist + (t - node.t) # add time delta to penalise later trips
 
                 new_node = Node(type, id, t, parent=node)
 
@@ -305,7 +303,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         path.append(node)
         node = node.parent
     
-    for node in path[::-1]:
+    for node in reversed(path):
         print(node)
         
 

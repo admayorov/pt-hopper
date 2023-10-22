@@ -250,30 +250,30 @@ CREATE TABLE stops as (
   , stops_all as (
     select
       *,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_number,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_short_name,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[3] else NULL end     as stop_road_name,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[4] else NULL end     as stop_suburb
+      stop_regex_array[1] as stop_number,
+      stop_regex_array[2] as stop_short_name,
+      stop_regex_array[3] as stop_road_name,
+      stop_regex_array[4] as stop_suburb
     from tram   
 
     union all
 
     select
       *,
-      NULL                                                                                   as stop_number,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_short_name,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_road_name,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[3] else NULL end     as stop_suburb
+      NULL                as stop_number,
+      stop_regex_array[1] as stop_short_name,
+      stop_regex_array[2] as stop_road_name,
+      stop_regex_array[3] as stop_suburb
     from bus
 
     union all
 
     select
       *,
-      NULL                                                                                   as stop_number,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[1] else NULL end     as stop_short_name,
-      NULL                                                                                   as stop_road_name,
-      case when CARDINALITY(stop_regex_array) > 0 then stop_regex_array[2] else NULL end     as stop_suburb
+      NULL                as stop_number,
+      stop_regex_array[1] as stop_short_name,
+      NULL                as stop_road_name,
+      stop_regex_array[2] as stop_suburb
     from vline_metro
   )
 
@@ -285,8 +285,14 @@ CREATE TABLE stops as (
     stop_short_name::TEXT  as stop_short_name,  
     stop_road_name::TEXT   as stop_road_name,
     stop_suburb::TEXT      as stop_suburb,
-    stop_lat::DECIMAL      as stop_lat,
-    stop_lon::DECIMAL      as stop_lon
+    stop_lat::NUMERIC      as stop_lat,
+    stop_lon::NUMERIC      as stop_lon,
+    ST_Transform(
+      ST_SetSRID(
+        ST_MakePoint(stop_lon::NUMERIC, stop_lat::NUMERIC),
+      4326),
+    3857)::GEOMETRY        as stop_geo_point,
+    NULL::TEXT[]           as cluster_neighours
   from stops_all
 
 );
@@ -341,6 +347,37 @@ CREATE INDEX idx_stops_stop_id ON stops(stop_id);
 CREATE INDEX idx_trips_trip_id ON trips(trip_id);
 CREATE INDEX idx_trips_route_id ON trips(route_id);
 CREATE INDEX idx_trips_service_id ON trips(service_id);
+CREATE INDEX idx_stops_stop_geo_point on stops using GIST(stop_geo_point);
+
+
+-- Secondary Layer
+-- Clusters
+create temporary table stop_clusters as (
+  with cluster as (
+    select
+      stop_id,
+      ST_ClusterWithinWin(stop_geo_point, 50) OVER () as cluster_id
+    from stops
+  )
+
+  , multi_stop_only as (
+    select cluster_id from cluster
+    group by cluster_id
+    having count(*) > 1
+  )
+
+  select stop_id, cluster_id from cluster
+  where cluster_id in (select cluster_id from multi_stop_only)
+);
+
+-- Update stops
+update stops set cluster_neighbours = (
+  select ARRAY_AGG(c.stop_id) from stop_clusters c
+  where c.stop_id <> stops.stop_id
+  and c.cluster_id in (
+    select cc.cluster_id from stop_clusters cc where stops.stop_id = cc.stop_id
+  )
+);
 
 -- Grants
 GRANT ALL PRIVILEGES ON DATABASE ptvdb TO python;

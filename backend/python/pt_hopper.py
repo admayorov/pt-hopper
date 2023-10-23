@@ -304,7 +304,6 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
 
         estimate = int(time_in_seconds)
 
-
         return node.t + estimate
     
     minimum_transfer_time = 60 # Minimum time (seconds) allowed between arriving at a stop and boarding another trip
@@ -327,15 +326,16 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                 id = trip[1]
                 t = trip[3]
 
-                new_node = Node('trip', id, t, origin_stop_id=node.id, parent=node)
-                sq.add(new_node, f_score(new_node))
+                if (t - node.t) > minimum_transfer_time:
+                    new_node = Node('trip', id, t, origin_stop_id=node.id, parent=node)
+                    sq.add(new_node, f_score(new_node))
             
             # Add neighbour stops from cluster
             stop_data = get_stop(node.id)
             if stop_data.cluster_neighbours:
                 for neighbour_id in stop_data.cluster_neighbours:
                     id = neighbour_id
-                    t = node.t
+                    t = node.t + minimum_transfer_time
 
                     new_node = Node('stop', id, t, parent=node)
                     sq.add(new_node, f_score(new_node))
@@ -343,7 +343,6 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                     if neighbour_id == end_stop_id:
                         found_node = new_node
                         break
-
 
         elif node.type == 'trip':
             stops = get_stopping_times(node.id)
@@ -429,11 +428,13 @@ if __name__ == '__main__':
 # - pretty print ✅
 # - incorporate time 
 #   - use as tiebraker? ✅
-#   - think about time-based heuristic function <------------------
-# - consider A*
+#   - think about time-based heuristic function ✅
+# - consider A* ✅
 # - add other modes ✅
 #   - start looking into stop grouping ✅
 # - formalise heapdict and visited set into a class ✅
 # - re-use sqlalchemy session between calls ✅
 # - update to modern sqlalchemy syntax
 # - pass date and time into get trips instead of relying on current_date
+# - get multiple paths
+#   - once path is found, recalculate with an intermidate node removed

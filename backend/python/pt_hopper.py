@@ -240,6 +240,7 @@ class Node:
     type: str
     id: str
     t: str
+    origin_stop_id: str = None
     parent: Node = None
 
     def __hash__(self):
@@ -254,9 +255,6 @@ class Node:
 
         return f"<{self.type} node '{self.id}' at {pretty_time}>"
     
-    def tid(self):
-        return (self.type, self.id)
-
 class SearchQueue():
     def __init__(self):
         self.q = heapdict()
@@ -290,21 +288,36 @@ class SearchQueue():
     
 
 def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
+    def f_score(node):
+        if node.type == 'stop':
+            stop_id = node.id
+        else:
+            stop_id = node.origin_stop_id
+        
+        dist_in_metres = stop_distance(stop_id, end_stop_id)
+        dist_in_km = dist_in_metres/1000
+
+        avg_speed = 0.5 # km per minute
+
+        time_in_minutes = dist_in_km / avg_speed
+        time_in_seconds = time_in_minutes * 60
+
+        estimate = int(time_in_seconds)
+
+
+        return node.t + estimate
+    
     minimum_transfer_time = 60 # Minimum time (seconds) allowed between arriving at a stop and boarding another trip
     sq = SearchQueue()
 
-    node_type = 'stop'
-    id = start_stop_id
     t = time_to_seconds(departure_time)
+    start_node = Node('stop', start_stop_id, t)
 
-    node = Node(node_type, id, t)
-    score = stop_distance(start_stop_id, end_stop_id)
-
-    sq.add(node, score)
+    sq.add(start_node, f_score(start_node))
 
     found_node = None
     for i in range(2000):
-        node, current_score = sq.popitem()
+        node, _ = sq.popitem()
 
         if node.type == 'stop':
             trips = get_trips(node.id, node.t, time_limit=60*30)
@@ -312,11 +325,10 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
             # Add trips from this stop
             for trip in trips:
                 id = trip[1]
-                t = trip[3] + minimum_transfer_time
-                score = current_score + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
+                t = trip[3]
 
-                new_node = Node('trip', id, t, parent=node)
-                sq.add(new_node, score)
+                new_node = Node('trip', id, t, origin_stop_id=node.id, parent=node)
+                sq.add(new_node, f_score(new_node))
             
             # Add neighbour stops from cluster
             stop_data = get_stop(node.id)
@@ -324,25 +336,32 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                 for neighbour_id in stop_data.cluster_neighbours:
                     id = neighbour_id
                     t = node.t
-                    score = current_score + stop_distance(node.id, neighbour_id)
 
                     new_node = Node('stop', id, t, parent=node)
-                    sq.add(new_node, score)
+                    sq.add(new_node, f_score(new_node))
+
+                    if neighbour_id == end_stop_id:
+                        found_node = new_node
+                        break
 
 
         elif node.type == 'trip':
             stops = get_stopping_times(node.id)
 
-            # Add each stop that arrives on or after the node time
-            # TODO: refactor to explictly take origin stop into account
             for stop in stops:
-                if stop[3] >= node.t:
+                stop_id = stop[1]
+                if stop_id == node.origin_stop_id:
+                    origin_seq_no = stop[0]
+                    break
+            
+            for stop in stops:
+                seq_no = stop[0]
+                if seq_no > origin_seq_no:
                     stop_id = stop[1]
                     t = stop[3]
-                    score = stop_distance(stop[1], end_stop_id)
 
                     new_node = Node('stop', stop_id, t, parent=node)
-                    sq.add(new_node, score)
+                    sq.add(new_node, f_score(new_node))
 
                     if stop_id == end_stop_id:
                         found_node = new_node
@@ -356,11 +375,21 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         NUM = 10
 
         i = 0
-        for node, dist in nodes.items():
+        for node, est_t in nodes.items():
             if i == NUM:
                 break
 
-            print(f"{node} {round(dist/1000,3)} km")
+            time, _ = seconds_to_time(est_t)
+            pretty_time = time.strftime('%H:%M')
+
+            # if node.type == 'stop':
+            #     stop_data = get_stop(node.id)
+            # else:
+            #     stop_data = get_stop(node.origin_stop_id)
+            
+
+            print(f"{node} - est arrival {pretty_time}")
+            # print(f"{node} - est arrival {pretty_time} - {stop_data[:3]}")
             i+= 1
 
         if len(nodes) > NUM:
@@ -380,18 +409,20 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         node = node.parent
     
     for node in reversed(path):
-        print(node)
+        if node.type == 'stop':
+            data = get_stop(node.id)[:3]
+        else:
+            data = ''
+
+        print(node, data)
         
 
 
 if __name__ == '__main__':
-    stop1 = '19915' # Clayton
-    stop2 = '19866' # Cheltenham
-    t0 = time_to_seconds(datetime.now())
+    stop1 = '22180' # SXS
+    stop2 = '21611' # Monash Uni
 
-    n = Node('stop', stop1, t0)
-
-    algo(stop1, stop2, datetime.now())
+    algo(stop1, stop2, datetime.now() - timedelta(hours=10))
 
 
 # next:

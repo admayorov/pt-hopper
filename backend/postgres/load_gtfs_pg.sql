@@ -48,7 +48,7 @@ CREATE TABLE calendar_dates as (
 
 
 -- CALENDAR
-CREATE TABLE stg_calendar (
+CREATE TEMPORARY TABLE stg_calendar (
     mode TEXT,
     service_id TEXT,
     monday TEXT,
@@ -96,7 +96,7 @@ CREATE TABLE calendar as (
 
 
 -- ROUTES
-CREATE TABLE stg_routes (
+CREATE TEMPORARY TABLE stg_routes (
   mode TEXT,
   route_id TEXT,
   agency_id TEXT,
@@ -139,7 +139,7 @@ CREATE TABLE routes as (
 
 
 -- STOP_TIMES
-CREATE TABLE stg_stop_times (
+CREATE TEMPORARY TABLE stg_stop_times (
   mode TEXT,
   trip_id TEXT,
   arrival_time TEXT,
@@ -200,7 +200,7 @@ CREATE TABLE stop_times as (
 
 
 -- STOPS
-CREATE TABLE stg_stops (
+CREATE TEMPORARY TABLE stg_stops (
   mode TEXT,
   stop_id TEXT,
   stop_name TEXT,
@@ -292,7 +292,7 @@ CREATE TABLE stops as (
         ST_MakePoint(stop_lon::NUMERIC, stop_lat::NUMERIC),
       4326),
     3857)::GEOMETRY        as stop_geo_point,
-    NULL::TEXT[]           as cluster_neighours
+    NULL::TEXT[]           as cluster_neighbours
   from stops_all
 
 );
@@ -300,7 +300,7 @@ CREATE TABLE stops as (
 
 
 -- TRIPS
-CREATE TABLE stg_trips (
+CREATE TEMPORARY TABLE stg_trips (
   mode TEXT,
   route_id TEXT,
   service_id TEXT,
@@ -356,7 +356,7 @@ create temporary table stop_clusters as (
   with cluster as (
     select
       stop_id,
-      ST_ClusterWithinWin(stop_geo_point, 50) OVER () as cluster_id
+      ST_ClusterWithinWin(stop_geo_point, 100) OVER () as cluster_id
     from stops
   )
 
@@ -387,11 +387,6 @@ GRANT ALL ON TABLE geography_columns TO python;
 GRANT ALL ON TABLE geometry_columns TO python;
 GRANT ALL ON TABLE routes TO python;
 GRANT ALL ON TABLE spatial_ref_sys TO python;
-GRANT ALL ON TABLE stg_calendar TO python;
-GRANT ALL ON TABLE stg_routes TO python;
-GRANT ALL ON TABLE stg_stop_times TO python;
-GRANT ALL ON TABLE stg_stops TO python;
-GRANT ALL ON TABLE stg_trips TO python;
 GRANT ALL ON TABLE stop_times TO python;
 GRANT ALL ON TABLE stops TO python;
 GRANT ALL ON TABLE trips TO python;

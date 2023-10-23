@@ -94,7 +94,7 @@ class CalendarDate(Base):
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 
-
+session = Session()
 
 def time_to_seconds(dt: datetime | time, is_next_day=False) -> int:
     hours = dt.hour
@@ -119,111 +119,108 @@ def seconds_to_time(total_seconds: int) -> Tuple[time, bool]:
     
 
 def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100, time_limit: int = 9999999):
-    with Session() as session:
-        # Some params
-        try:
-            day_of_the_week = departure_time.weekday()
-        except:
-            day_of_the_week = datetime.now().weekday()  # FIXME
 
-        cal_column_list = [Calendar.monday, Calendar.tuesday, Calendar.wednesday, Calendar.thursday, Calendar.friday, Calendar.saturday, Calendar.sunday]
-        cal_column = cal_column_list[day_of_the_week]
+    try:
+        day_of_the_week = departure_time.weekday()
+    except:
+        day_of_the_week = datetime.now().weekday()  # FIXME
 
-        # Build the query
-        query = session.query(
-            StopTime.mode,
-            Trip.trip_id,
-            StopTime.arrival_time_int,
-            StopTime.departure_time_int,
-            Trip.trip_headsign,
-            case((Route.route_short_name != '', Route.route_short_name), else_=Route.route_long_name).label('route'),
-            Route.route_id
-        ).distinct()
+    cal_column_list = [Calendar.monday, Calendar.tuesday, Calendar.wednesday, Calendar.thursday, Calendar.friday, Calendar.saturday, Calendar.sunday]
+    cal_column = cal_column_list[day_of_the_week]
 
-        query = query.join(Trip, and_(StopTime.trip_id == Trip.trip_id, Trip.mode == StopTime.mode), isouter=True)
-        query = query.join(Calendar, and_(Trip.service_id == Calendar.service_id, Calendar.mode == StopTime.mode), isouter=True)
-        query = query.join(Route, and_(Trip.route_id == Route.route_id, Route.mode == StopTime.mode), isouter=True)
+    # Build the query
+    query = session.query(
+        StopTime.mode,
+        Trip.trip_id,
+        StopTime.arrival_time_int,
+        StopTime.departure_time_int,
+        Trip.trip_headsign,
+        case((Route.route_short_name != '', Route.route_short_name), else_=Route.route_long_name).label('route'),
+        Route.route_id
+    ).distinct()
 
-        if type(departure_time) == 'datetime':
-            dep_time_int = time_to_seconds(departure_time)
-        else:
-            dep_time_int = departure_time
+    query = query.join(Trip, and_(StopTime.trip_id == Trip.trip_id, Trip.mode == StopTime.mode), isouter=True)
+    query = query.join(Calendar, and_(Trip.service_id == Calendar.service_id, Calendar.mode == StopTime.mode), isouter=True)
+    query = query.join(Route, and_(Trip.route_id == Route.route_id, Route.mode == StopTime.mode), isouter=True)
 
-        query = query.filter(
-            StopTime.stop_id == stop_id,
-            Calendar.start_date <= func.current_date(),
-            Calendar.end_date >= func.current_date(),
-            cal_column == 1,
-            StopTime.departure_time_int.between(dep_time_int, dep_time_int+time_limit),
-            ~Trip.service_id.in_(
-                session.query(CalendarDate.service_id).filter(
-                    CalendarDate.date == func.current_date(),
-                    CalendarDate.exception_type == '2'
-                )
+    if type(departure_time) == 'datetime':
+        dep_time_int = time_to_seconds(departure_time)
+    else:
+        dep_time_int = departure_time
+
+    query = query.filter(
+        StopTime.stop_id == stop_id,
+        Calendar.start_date <= func.current_date(),
+        Calendar.end_date >= func.current_date(),
+        cal_column == 1,
+        StopTime.departure_time_int.between(dep_time_int, dep_time_int+time_limit),
+        ~Trip.service_id.in_(
+            session.query(CalendarDate.service_id).filter(
+                CalendarDate.date == func.current_date(),
+                CalendarDate.exception_type == '2'
             )
-        ).order_by(StopTime.departure_time_int).limit(row_limit)
+        )
+    ).order_by(StopTime.departure_time_int).limit(row_limit)
 
-        return query.all()
+    return query.all()
 
 def get_stopping_times(trip_id: str):
-    with Session() as session:
-        # Define the query
-        query = session.query(
-            Trip.trip_id,
-            StopTime.stop_sequence,
-            Stop.stop_id,
-            Stop.stop_short_name,
-            StopTime.departure_time_int
-        )
 
-        query = query.join(StopTime, Trip.trip_id == StopTime.trip_id, isouter=True)
-        query = query.join(Stop, StopTime.stop_id == Stop.stop_id)
+    # Define the query
+    query = session.query(
+        Trip.trip_id,
+        StopTime.stop_sequence,
+        Stop.stop_id,
+        Stop.stop_short_name,
+        StopTime.departure_time_int
+    )
 
-        query = query.filter(Trip.trip_id == trip_id)
+    query = query.join(StopTime, Trip.trip_id == StopTime.trip_id, isouter=True)
+    query = query.join(Stop, StopTime.stop_id == Stop.stop_id)
 
-        query = query.order_by(StopTime.stop_sequence.cast(Integer).asc())
+    query = query.filter(Trip.trip_id == trip_id)
 
-        result = query.all()
-        return [row[1:] for row in result] # Exclude reudndant trip_id column
+    query = query.order_by(StopTime.stop_sequence.cast(Integer).asc())
+
+    result = query.all()
+    return [row[1:] for row in result] # Exclude reudndant trip_id column
 
 def stop_distance(stop_id_1: str, stop_id_2: str):
-    with Session() as session:
-        sql = text(
-            """
-            select
-                ST_Distance(s1.stop_geo_point, s2.stop_geo_point)
-            from stops s1 cross join stops s2
-            where s1.stop_id = :s1 and s2.stop_id = :s2;
-            """)
-        
-        result = session.execute(sql, params={'s1': stop_id_1, 's2': stop_id_2}).fetchall()
+    sql = text(
+        """
+        select
+            ST_Distance(s1.stop_geo_point, s2.stop_geo_point)
+        from stops s1 cross join stops s2
+        where s1.stop_id = :s1 and s2.stop_id = :s2;
+        """)
+    
+    result = session.execute(sql, params={'s1': stop_id_1, 's2': stop_id_2}).fetchall()
 
-        if len(result) == 0:
-            raise Exception(f"No results from stop_distance with following stop_id values: {stop_id_1}, {stop_id_2}")
-        
-        return result[0][0]
+    if len(result) == 0:
+        raise Exception(f"No results from stop_distance with following stop_id values: {stop_id_1}, {stop_id_2}")
+    
+    return result[0][0]
 
 def get_stop(stop_id: str):
-    with Session() as session:
-        query = session.query(
-            Stop.mode,
-            Stop.stop_id,
-            Stop.stop_full_name,
-            Stop.stop_number,
-            Stop.stop_short_name,
-            Stop.stop_road_name,
-            Stop.stop_suburb,
-            Stop.cluster_neighbours
-        )
+    query = session.query(
+        Stop.mode,
+        Stop.stop_id,
+        Stop.stop_full_name,
+        Stop.stop_number,
+        Stop.stop_short_name,
+        Stop.stop_road_name,
+        Stop.stop_suburb,
+        Stop.cluster_neighbours
+    )
 
-        query = query.filter(Stop.stop_id == stop_id)
-        
-        result = query.first()
+    query = query.filter(Stop.stop_id == stop_id)
+    
+    result = query.first()
 
-        if result is None:
-            raise Exception(f"No results from get_stop for stop_id {stop_id}")
-        
-        return result
+    if result is None:
+        raise Exception(f"No results from get_stop for stop_id {stop_id}")
+    
+    return result
         
 
 # trips = get_trips('19943', datetime.now(), row_limit=20, time_limit=60*60)
@@ -403,7 +400,7 @@ if __name__ == '__main__':
 # - consider A*
 # - add other modes ✅
 #   - start looking into stop grouping ✅
-# - formalise heapdict and visited set into a class ✅❔
-# - re-use sqlalchemy session between calls
+# - formalise heapdict and visited set into a class ✅
+# - re-use sqlalchemy session between calls ✅
 # - update to modern sqlalchemy syntax
 # - pass date and time into get trips instead of relying on current_date

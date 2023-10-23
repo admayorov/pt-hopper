@@ -124,7 +124,7 @@ def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100
         try:
             day_of_the_week = departure_time.weekday()
         except:
-            day_of_the_week = 3  # FIXME
+            day_of_the_week = datetime.now().weekday()  # FIXME
 
         cal_column_list = [Calendar.monday, Calendar.tuesday, Calendar.wednesday, Calendar.thursday, Calendar.friday, Calendar.saturday, Calendar.sunday]
         cal_column = cal_column_list[day_of_the_week]
@@ -260,24 +260,52 @@ class Node:
     def tid(self):
         return (self.type, self.id)
 
+class SearchQueue():
+    def __init__(self):
+        self.q = heapdict()
+        self.visited = set()
+    
+    def __len__(self):
+        return len(self.q)
+    
+    def __bool__(self):
+        return bool(self.q)
+    
+    def add(self, node: Node, score: any):
+        if (node.type, node.id) in self.visited:
+            return
+            # if node in self.q:
+            #     _, existing_score = self.q[node]
+            #     if existing_score < score:
+            #         return # Existing score is better, so skip update
+        
+        self.visited.add((node.type, node.id))
+        self.q[node] = score
+    
+    def popitem(self):
+        return self.q.popitem()
+    
+    def as_dict(self):
+        return dict(self.q)
+    
+    
+
 def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
-    minimum_transfer_time = 60 # Time (seconds) between arriving at a stop and boarding another trip
-    q = heapdict()
+    minimum_transfer_time = 60 # Minimum time (seconds) allowed between arriving at a stop and boarding another trip
+    sq = SearchQueue()
 
     node_type = 'stop'
     id = start_stop_id
     t = time_to_seconds(departure_time)
 
     node = Node(node_type, id, t)
-    
-    q[node] = stop_distance(start_stop_id, end_stop_id)
+    score = stop_distance(start_stop_id, end_stop_id)
 
-    visited = set()
-    visited.add(node.tid())
+    sq.add(node, score)
 
     found_node = None
-    for i in range(999):
-        node, current_dist = q.popitem()
+    for i in range(2000):
+        node, current_score = sq.popitem()
 
         if node.type == 'stop':
             trips = get_trips(node.id, node.t, time_limit=60*30)
@@ -286,13 +314,10 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
             for trip in trips:
                 id = trip[1]
                 t = trip[3] + minimum_transfer_time
-                dist = current_dist + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
+                score = current_score + (t - node.t) # add time delta to penalise later trips (1 second = 1 extra metre)
 
                 new_node = Node('trip', id, t, parent=node)
-
-                if new_node.tid() not in visited:
-                    visited.add(new_node.tid())
-                    q[new_node] = dist
+                sq.add(new_node, score)
             
             # Add neighbour stops from cluster
             stop_data = get_stop(node.id)
@@ -300,13 +325,10 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                 for neighbour_id in stop_data.cluster_neighbours:
                     id = neighbour_id
                     t = node.t
-                    dist = current_dist + stop_distance(node.id, neighbour_id)
+                    score = current_score + stop_distance(node.id, neighbour_id)
 
                     new_node = Node('stop', id, t, parent=node)
-
-                    if new_node.tid() not in visited:
-                        visited.add(new_node.tid())
-                        q[new_node] = dist 
+                    sq.add(new_node, score)
 
 
         elif node.type == 'trip':
@@ -318,13 +340,10 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
                 if stop[3] >= node.t:
                     stop_id = stop[1]
                     t = stop[3]
-                    dist = stop_distance(stop[1], end_stop_id)
+                    score = stop_distance(stop[1], end_stop_id)
 
                     new_node = Node('stop', stop_id, t, parent=node)
-
-                    if new_node.tid() not in visited:
-                        visited.add(new_node.tid())
-                        q[new_node] = dist
+                    sq.add(new_node, score)
 
                     if stop_id == end_stop_id:
                         found_node = new_node
@@ -332,11 +351,21 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
            
         print(f"#{i}")
 
-        nodes = dict(q)
+        nodes = sq.as_dict()
         nodes = {k: v for k, v in sorted(nodes.items(), key=lambda item: item[1])}
+        
+        NUM = 10
 
+        i = 0
         for node, dist in nodes.items():
+            if i == NUM:
+                break
+
             print(f"{node} {round(dist/1000,3)} km")
+            i+= 1
+
+        if len(nodes) > NUM:
+            print(f"... and {len(nodes)-NUM} more nodes.")
         print("\n")
 
         if found_node:
@@ -358,7 +387,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
 
 if __name__ == '__main__':
     stop1 = '19915' # Clayton
-    stop2 = '19866' # Cheltenham
+    stop2 = '19872' # Highett
     t0 = time_to_seconds(datetime.now())
 
     n = Node('stop', stop1, t0)
@@ -368,9 +397,13 @@ if __name__ == '__main__':
 
 # next:
 # - pretty print ✅
-# - incorporate time
-#   - use as tiebraker?
-#   - think about time-based heuristic function
+# - incorporate time 
+#   - use as tiebraker? ✅
+#   - think about time-based heuristic function <------------------
 # - consider A*
-# - add other modes
-#   - start looking into stop grouping
+# - add other modes ✅
+#   - start looking into stop grouping ✅
+# - formalise heapdict and visited set into a class ✅❔
+# - re-use sqlalchemy session between calls
+# - update to modern sqlalchemy syntax
+# - pass date and time into get trips instead of relying on current_date

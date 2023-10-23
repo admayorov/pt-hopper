@@ -270,14 +270,16 @@ class SearchQueue():
     
     def add(self, node: Node, score: any):
         if (node.type, node.id) in self.visited:
-            return
-            # if node in self.q:
-            #     _, existing_score = self.q[node]
-            #     if existing_score < score:
-            #         return # Existing score is better, so skip update
-        
-        self.visited.add((node.type, node.id))
-        self.q[node] = score
+            try:
+                existing_score = self.q[node]
+            except KeyError:
+                return
+
+            if score < existing_score:
+                self.q[node] = score
+        else:
+            self.visited.add((node.type, node.id))
+            self.q[node] = score
     
     def popitem(self):
         return self.q.popitem()
@@ -384,7 +386,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
 
 if __name__ == '__main__':
     stop1 = '19915' # Clayton
-    stop2 = '19872' # Highett
+    stop2 = '19866' # Cheltenham
     t0 = time_to_seconds(datetime.now())
 
     n = Node('stop', stop1, t0)

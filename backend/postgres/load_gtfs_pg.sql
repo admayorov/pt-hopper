@@ -350,34 +350,6 @@ CREATE INDEX idx_trips_service_id ON trips(service_id);
 CREATE INDEX idx_stops_stop_geo_point on stops using GIST(stop_geo_point);
 
 
--- Secondary Layer
--- Clusters
-create temporary table stop_clusters as (
-  with cluster as (
-    select
-      stop_id,
-      ST_ClusterWithinWin(stop_geo_point, 100) OVER () as cluster_id
-    from stops
-  )
-
-  , multi_stop_only as (
-    select cluster_id from cluster
-    group by cluster_id
-    having count(*) > 1
-  )
-
-  select stop_id, cluster_id from cluster
-  where cluster_id in (select cluster_id from multi_stop_only)
-);
-
--- Update stops
-update stops set cluster_neighbours = (
-  select ARRAY_AGG(c.stop_id) from stop_clusters c
-  where c.stop_id <> stops.stop_id
-  and c.cluster_id in (
-    select cc.cluster_id from stop_clusters cc where stops.stop_id = cc.stop_id
-  )
-);
 
 -- Grants
 GRANT ALL PRIVILEGES ON DATABASE ptvdb TO python;

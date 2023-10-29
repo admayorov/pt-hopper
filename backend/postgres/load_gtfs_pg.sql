@@ -291,8 +291,7 @@ CREATE TABLE stops as (
       ST_SetSRID(
         ST_MakePoint(stop_lon::NUMERIC, stop_lat::NUMERIC),
       4326),
-    3857)::GEOMETRY        as stop_geo_point,
-    NULL::TEXT[]           as cluster_neighbours
+    3857)::GEOMETRY        as stop_geo_point
   from stops_all
 
 );

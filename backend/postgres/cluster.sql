@@ -108,3 +108,5 @@ create table stop_clusters as (
     from stop_proximity_clusters pc
     full outer join stop_name_clusters nc on pc.stop_id = nc.stop_id
 );
+
+grant all on table stop_clusters to python;

@@ -6,7 +6,7 @@ from typing import Tuple
 
 from heapdict import heapdict
 
-from sqlalchemy import ARRAY, create_engine, and_, case, func, Column, Integer, Numeric, SmallInteger, Text, Date
+from sqlalchemy import ARRAY, Boolean, cast, column, create_engine, and_, case, func, Column, Integer, Numeric, SmallInteger, Text, Date, String, literal_column, or_, select, union
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.sql import text
 
@@ -25,7 +25,6 @@ class Stop(Base):
     stop_short_name = Column(Text)
     stop_road_name = Column(Text)
     stop_suburb = Column(Text)
-    cluster_neighbours = Column(ARRAY(Text))
     # stop_lat = Column(Numeric)
     # stop_lon = Column(Numeric)
 
@@ -90,6 +89,14 @@ class CalendarDate(Base):
     date = Column(Date, primary_key=True)
     exception_type = Column(SmallInteger)
 
+class StopClusters(Base):
+    __tablename__ = 'stop_clusters'
+
+    stop_id = Column(Text, primary_key=True)
+    proximity_cluster_id = Column(Text)
+    name_cluster_id = Column(Text)
+    is_interchange_cluster = Column(Boolean)
+
 
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
@@ -118,7 +125,13 @@ def seconds_to_time(total_seconds: int) -> Tuple[time, bool]:
     return time(hour=hours, minute=minutes, second=seconds), is_next_day
     
 
-def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100, time_limit: int = 9999999):
+def get_trips(
+        stop_id: str,
+        departure_time: datetime | int,
+        include_cluster_neighbours: bool = False,
+        row_limit: int = 100,
+        time_limit: int = 9999999
+    ):
 
     try:
         day_of_the_week = departure_time.weekday()
@@ -130,6 +143,7 @@ def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100
 
     # Build the query
     query = session.query(
+        StopTime.stop_id,
         StopTime.mode,
         Trip.trip_id,
         StopTime.arrival_time_int,
@@ -148,8 +162,14 @@ def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100
     else:
         dep_time_int = departure_time
 
+    if include_cluster_neighbours:
+        subquery = _query_stop_cluster_neighbours(stop_id)
+        stop_id_filter = StopTime.stop_id.in_(subquery)
+    else:
+        stop_id_filter = StopTime.stop_id == stop_id
+
     query = query.filter(
-        StopTime.stop_id == stop_id,
+        stop_id_filter,
         Calendar.start_date <= func.current_date(),
         Calendar.end_date >= func.current_date(),
         cal_column == 1,
@@ -164,7 +184,7 @@ def get_trips(stop_id: str, departure_time: datetime | int, row_limit: int = 100
 
     return query.all()
 
-def get_stopping_times(trip_id: str):
+def get_stopping_times(trip_id: str, interchanges_only: bool = False):
 
     # Define the query
     query = session.query(
@@ -172,13 +192,17 @@ def get_stopping_times(trip_id: str):
         StopTime.stop_sequence,
         Stop.stop_id,
         Stop.stop_short_name,
-        StopTime.departure_time_int
+        StopTime.departure_time_int,
+        StopClusters.is_interchange_cluster
     )
 
     query = query.join(StopTime, Trip.trip_id == StopTime.trip_id, isouter=True)
     query = query.join(Stop, StopTime.stop_id == Stop.stop_id)
+    query = query.join(StopClusters, StopClusters.stop_id == Stop.stop_id)
 
     query = query.filter(Trip.trip_id == trip_id)
+    if interchanges_only:
+        query = query.filter(StopClusters.is_interchange_cluster == True)
 
     query = query.order_by(StopTime.stop_sequence.cast(Integer).asc())
 
@@ -201,7 +225,7 @@ def stop_distance(stop_id_1: str, stop_id_2: str):
     
     return result[0][0]
 
-def get_stop(stop_id: str):
+def get_stop_data(stop_id: str):
     query = session.query(
         Stop.mode,
         Stop.stop_id,
@@ -210,7 +234,6 @@ def get_stop(stop_id: str):
         Stop.stop_short_name,
         Stop.stop_road_name,
         Stop.stop_suburb,
-        Stop.cluster_neighbours
     )
 
     query = query.filter(Stop.stop_id == stop_id)
@@ -221,7 +244,27 @@ def get_stop(stop_id: str):
         raise Exception(f"No results from get_stop for stop_id {stop_id}")
     
     return result
-        
+
+def _query_stop_cluster_neighbours(stop_id: str):
+    subquery_prox = session.query(StopClusters.proximity_cluster_id).filter(StopClusters.stop_id == stop_id)
+    subquery_name = session.query(StopClusters.name_cluster_id).filter(StopClusters.stop_id == stop_id)
+
+    subquery = union(
+        session.query(StopClusters.stop_id).filter(StopClusters.proximity_cluster_id.in_(subquery_prox)),
+        session.query(StopClusters.stop_id).filter(StopClusters.name_cluster_id.in_(subquery_name)),
+        select(cast(text(stop_id), Text))
+    )
+
+    return subquery
+
+def get_stop_cluster_neighbours(stop_id: str):
+    query = session.query(StopClusters.stop_id)
+
+    subquery = _query_stop_cluster_neighbours(stop_id)
+    query = query.filter(StopClusters.stop_id.in_(subquery))
+    
+    return query.all()
+
 
 # trips = get_trips('19943', datetime.now(), row_limit=20, time_limit=60*60)
 # for row in trips:
@@ -279,6 +322,9 @@ class SearchQueue():
             self.visited.add((node.type, node.id))
             self.q[node] = score
     
+    def mark_visited(self, type, id):
+        self.visited.add((type, id))
+    
     def popitem(self):
         return self.q.popitem()
     
@@ -319,33 +365,23 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
         node, _ = sq.popitem()
 
         if node.type == 'stop':
-            trips = get_trips(node.id, node.t, time_limit=60*30)
+            trips = get_trips(node.id, node.t, include_cluster_neighbours=True, time_limit=90*60)
 
             # Add trips from this stop
+            # TODO: check neighbours for goal and mark as visited separately, as they won't appear with upcoming trips atm.
             for trip in trips:
-                id = trip[1]
-                t = trip[3]
+                if trip.stop_id == end_stop_id: # In case neighbour is the goal node
+                    found_node = Node('stop', trip.stop_id, node.t, parent=node)
+                    break
+                
+                sq.mark_visited('stop', trip.stop_id) # Mark (potential) neighbour as visited
 
-                if (t - node.t) > minimum_transfer_time:
-                    new_node = Node('trip', id, t, origin_stop_id=node.id, parent=node)
+                if (trip.departure_time_int - node.t) > minimum_transfer_time:
+                    new_node = Node('trip', trip.trip_id, trip.departure_time_int, origin_stop_id=trip.stop_id, parent=node)
                     sq.add(new_node, f_score(new_node))
-            
-            # Add neighbour stops from cluster
-            stop_data = get_stop(node.id)
-            if stop_data.cluster_neighbours:
-                for neighbour_id in stop_data.cluster_neighbours:
-                    id = neighbour_id
-                    t = node.t + minimum_transfer_time
-
-                    new_node = Node('stop', id, t, parent=node)
-                    sq.add(new_node, f_score(new_node))
-
-                    if neighbour_id == end_stop_id:
-                        found_node = new_node
-                        break
 
         elif node.type == 'trip':
-            stops = get_stopping_times(node.id)
+            stops = get_stopping_times(node.id, interchanges_only=True)
 
             for stop in stops:
                 stop_id = stop[1]
@@ -382,9 +418,9 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
             pretty_time = time.strftime('%H:%M')
 
             # if node.type == 'stop':
-            #     stop_data = get_stop(node.id)
+            #     stop_data = get_stop_data(node.id)
             # else:
-            #     stop_data = get_stop(node.origin_stop_id)
+            #     stop_data = get_stop_data(node.origin_stop_id)
             
 
             print(f"{node} - est arrival {pretty_time}")
@@ -409,7 +445,7 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
     
     for node in reversed(path):
         if node.type == 'stop':
-            data = get_stop(node.id)[:3]
+            data = get_stop_data(node.id)[:3]
         else:
             data = ''
 
@@ -419,9 +455,21 @@ def algo(start_stop_id: str, end_stop_id: str, departure_time: datetime):
 
 if __name__ == '__main__':
     stop1 = '22180' # SXS
-    stop2 = '21611' # Monash Uni
+    stop2 = '6222' # 
 
-    algo(stop1, stop2, datetime.now() - timedelta(hours=10))
+    algo(stop1, stop2, datetime.now() - timedelta(hours=9, minutes=10))
+
+    # for s in get_stopping_times('57.T3.3-67-mjp-4.2.H', interchanges_only=True):
+    #     print(s)
+
+    # for p in get_stop_cluster_neighbours(stop2):
+    #     print(p)
+
+    # t = time_to_seconds(datetime.now() - timedelta(hours=8))
+    # for row in get_trips('19809', t, include_cluster_neighbours=True, time_limit=7200):
+    #     print(row)
+
+    print('\ndone')
 
 
 # next:
